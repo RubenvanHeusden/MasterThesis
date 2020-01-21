@@ -42,9 +42,9 @@ class SimpleMoE(nn.Module):
     def forward(self, x):
         """
         :params
-                :x
-                    input to the neural network, can either be a single sample or
-                    a batch of shape [batch_size, input_dim]
+            :x
+                input to the neural network, can either be a single sample or
+                a batch of shape [batch_size, input_dim]
 
         feeds the input sample(s) through the expert networks and multiplies the outputs
         by the outputs of the gating network with the outputs of the gating network

@@ -5,12 +5,7 @@ import random
 import math
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-
-# def synth_data(num_points, num_features, num_classes):
-#     X = torch.rand(num_points, num_features)
-#     y = torch.randint(high=num_classes, size=(num_points, 1))
-#     return X, y
+from torch.utils.data import Dataset, DataLoader
 
 
 class SynthData(Dataset):
@@ -26,8 +21,4 @@ class SynthData(Dataset):
         return self.num_points
 
     def __getitem__(self, idx):
-        # TODO: Implement batch selection
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-
-        return {"X": None, "y": None}
+        return self.X[idx]
