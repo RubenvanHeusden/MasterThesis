@@ -21,4 +21,4 @@ class SynthData(Dataset):
         return self.num_points
 
     def __getitem__(self, idx):
-        return self.X[idx]
+        return {"X": self.X[idx], "y": self.y[idx]}

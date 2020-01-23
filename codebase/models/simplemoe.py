@@ -7,12 +7,6 @@ from codebase.data.synthdata import *
 from codebase.models.mlp import *
 
 
-def synth_data(num_points, num_features, num_classes):
-    X = torch.rand(num_points, num_features)
-    y = torch.randint(high=num_classes, size=(num_classes, 1))
-    return X, y
-
-
 class SimpleMoE(nn.Module):
     """
     This class implements a simple Mixture of Model as described in (Jacobs et al. 1991)
@@ -32,12 +26,15 @@ class SimpleMoE(nn.Module):
             dimensionality of the output i.e. the number of classes
             in classification
     """
-    def __init__(self, input_dim, gating_network, expert_networks, output_dim):
+    def __init__(self, input_dim, gating_network, expert_networks, output_dim, device=torch.device("cpu")):
         super(SimpleMoE, self).__init__()
         self.input_dim = input_dim
         self.gating_network = gating_network
-        self.expert_networks = expert_networks
+        self.expert_networks = nn.ModuleList(expert_networks)
+        for x in range(len(expert_networks)):
+            self.expert_networks[x] = self.expert_networks[x].to(device)
         self.output_dim = output_dim
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         """
@@ -51,10 +48,10 @@ class SimpleMoE(nn.Module):
         """
 
         # the first step is to put x through all the networks
-        expert_weights = self.gating_network(x).unsqueeze(1)
+        expert_weights = self.softmax(self.gating_network(x)).unsqueeze(1)
         x = torch.stack([net(x) for net in self.expert_networks], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
-        return x
+        return x.squeeze()
 
 
 
