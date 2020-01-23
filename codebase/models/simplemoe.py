@@ -11,7 +11,7 @@ class SimpleMoE(nn.Module):
     """
     This class implements a simple Mixture of Model as described in (Jacobs et al. 1991)
     :params
-        input_dim: (int)
+        input_dim: (int
             dimensionality of the input sample(s)
 
         gating_network: (torch.nn.Module)
