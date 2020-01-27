@@ -6,3 +6,5 @@
 **/data
 **/runs
 **/manual_classification_tool
+**/.data
+**/.vector_cache

@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 # This file contains a generic training function for training pytorch networks
 
+
 def train(model, criterion, optimizer, dataset, n_epochs=10, device=torch.device("cpu")):
     # Set the model in training mode ust to be safe
     model = model.to(device)
