@@ -8,3 +8,4 @@
 **/manual_classification_tool
 **/.data
 **/.vector_cache
+**/saved_models

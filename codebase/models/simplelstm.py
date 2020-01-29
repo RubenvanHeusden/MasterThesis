@@ -3,9 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 # TODO: add Xavier Initialization
 
+
 class SimpleLSTM(nn.Module):
     def __init__(self, vocab, embedding_dim, hidden_dim, output_dim, dropout=0.3, device=torch.device("cpu")):
         super(SimpleLSTM, self).__init__()
+        self.params = locals()
         self.embed = nn.Embedding(len(vocab), embedding_dim)
         self.embed.weight.data.copy_(vocab.vectors)
         self.embedding_dim = embedding_dim
@@ -15,6 +17,13 @@ class SimpleLSTM(nn.Module):
         self.fc_out = nn.Linear(hidden_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
         self.device = device
+
+        self.params = {"vocab": vocab,
+                       "embedding_dim": embedding_dim,
+                       "hidden_dim": hidden_dim,
+                       "output_dim": output_dim,
+                       "dropout": dropout,
+                       "device": device}
 
     def forward(self, x, lengths="False"):
         b = x.shape[0]
