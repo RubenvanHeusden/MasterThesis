@@ -1,5 +1,5 @@
 from torchtext.data import BucketIterator, Iterator
-from codebase.data.dataiterator import DataIterator
+from codebase.data_classes.dataiterator import DataIterator
 from typing import List, Any
 import torch
 

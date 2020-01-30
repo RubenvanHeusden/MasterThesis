@@ -3,7 +3,7 @@ import numpy
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from codebase.data.synthdata import *
+from codebase.data_classes.synthdata import *
 from codebase.models.mlp import *
 
 
