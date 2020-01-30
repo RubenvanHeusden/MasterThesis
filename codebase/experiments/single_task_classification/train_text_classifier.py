@@ -2,8 +2,8 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torchtext.data import Field, LabelField
-from codebase.data.imdbdataset import IMDBDataset
-from codebase.data.customdataloader import CustomDataLoader
+from codebase.data_classes.imdbdataset import IMDBDataset
+from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.models.simplelstm import SimpleLSTM
 from torch.optim.lr_scheduler import StepLR
 from codebase.experiments.single_task_classification.train_methods import *
