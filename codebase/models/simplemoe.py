@@ -35,6 +35,13 @@ class SimpleMoE(nn.Module):
             self.expert_networks[x] = self.expert_networks[x].to(device)
         self.output_dim = output_dim
         self.softmax = nn.Softmax(dim=1)
+        self.params = {
+            "input_dim": input_dim,
+            "gating_network": gating_network,
+            "expert_networks": expert_networks,
+            "output_dim": output_dim,
+            "device": device
+        }
 
     def forward(self, x):
         """
