@@ -43,7 +43,7 @@ class SimpleMoE(nn.Module):
             "device": device
         }
 
-    def forward(self, x):
+    def forward(self, x, lengths="False"):
         """
         :params
             :x
@@ -53,9 +53,19 @@ class SimpleMoE(nn.Module):
         feeds the input sample(s) through the expert networks and multiplies the outputs
         by the outputs of the gating network with the outputs of the gating network
         """
-
         # the first step is to put x through all the networks
+        if lengths != "False":
+            expert_weights = self.softmax(self.gating_network(x, lengths=lengths)).unsqueeze(1)
+            # best_experts = expert_weights.argmax(dim=2)
+            # new_weights = torch.zeros_like(expert_weights).squeeze()
+            # expert_weights = new_weights.scatter(index=best_experts, src=torch.ones_like(best_experts).float(), dim=1)
+            # expert_weights = expert_weights.unsqueeze(1)
+            x = torch.stack([net(x, lengths=lengths) for net in self.expert_networks], dim=0).permute(1, 0, 2)
+            x = torch.bmm(expert_weights, x)
+            return x.squeeze()
+
         expert_weights = self.softmax(self.gating_network(x)).unsqueeze(1)
+
         x = torch.stack([net(x) for net in self.expert_networks], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
         return x.squeeze()
