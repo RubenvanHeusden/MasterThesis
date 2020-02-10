@@ -43,10 +43,10 @@ data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cac
 # Some sample models that can be used are listed below, uncomment the particular model to use it
 lstm_model = SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=16, output_dim=5, device=device,
                         use_lengths=include_lens)
-# g = SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=32, output_dim=2, device=device)
-# expert_networks = [SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=32, output_dim=2, device=device)
+# g = SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=4, output_dim=2, device=device)
+# expert_networks = [SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=64, output_dim=5, device=device)
 #                    for _ in range(2)]
-#
+
 # moe_model = SimpleMoE(None, gating_network=g, expert_networks=
 # expert_networks, output_dim=2, device=device)
 

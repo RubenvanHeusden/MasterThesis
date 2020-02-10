@@ -26,7 +26,7 @@ class SimpleMoE(nn.Module):
             dimensionality of the output i.e. the number of classes
             in classification
     """
-    def __init__(self, input_dim, gating_network, expert_networks, output_dim, device=torch.device("cpu")):
+    def __init__(self, input_dim, gating_network, expert_networks, output_dim: int, device=torch.device("cpu")):
         super(SimpleMoE, self).__init__()
         self.input_dim = input_dim
         self.gating_network = gating_network
