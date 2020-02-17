@@ -31,8 +31,9 @@ TEXT = Field(lower=SET_LOWERCASE, include_lengths=include_lens, batch_first=True
 LABEL = LabelField(dtype=torch.long)
 print("--- Starting with the SST dataset ---")
 #dataset = SSTDataset(TEXT, LABEL, path="../.data/imdb/aclImdb").load()
-#dataset = SSTDataset(TEXT, LABEL).load()
-dataset = YelpDataset(TEXT, LABEL, path="../.data/yelp").load()
+dataset = SSTDataset(TEXT, LABEL).load()
+#dataset = YelpDataset(TEXT, LABEL, path="../.data/yelp").load()
+
 print("--- Finished with the SST dataset ---")
 # Load the IMDB dataset and split it into train and test portions
 dloader = CustomDataLoader(dataset, TEXT, LABEL)
@@ -41,15 +42,15 @@ data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cac
 
 
 # Some sample models that can be used are listed below, uncomment the particular model to use it
-lstm_model = SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=16, output_dim=5, device=device,
+lstm_model = SimpleLSTM(vocab=TEXT.vocab.vectors, embedding_dim=300, hidden_dim=64, output_dim=2, device=device,
                         use_lengths=include_lens)
-# g = SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=4, output_dim=2, device=device)
-# expert_networks = [SimpleLSTM(vocab=TEXT.vocab, embedding_dim=300, hidden_dim=64, output_dim=5, device=device)
+# g = SimpleLSTM(vocab=TEXT.vocab.vectors, embedding_dim=300, hidden_dim=4, output_dim=2, device=device)
+# expert_networks = [SimpleLSTM(vocab=TEXT.vocab.vectors, embedding_dim=300, hidden_dim=64, output_dim=5, device=device)
 #                    for _ in range(2)]
-
-# moe_model = SimpleMoE(None, gating_network=g, expert_networks=
+#
+# moe_model = SimpleMoE(gating_network=g, expert_networks=
 # expert_networks, output_dim=2, device=device)
-
+#
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(lstm_model.parameters(), lr=OPTIMIZER_LEARNING_RATE)
@@ -64,4 +65,4 @@ train(lstm_model, criterion, optimizer, scheduler, data_iterators[0], device=dev
 
 print("Evaluating model")
 lstm_model.load_state_dict(torch.load("saved_models/MoE/SST_dataset_epoch_49.pt"))
-evaluation(lstm_model, data_iterators[1], criterion, device=device, include_lengths=include_lens)
+evaluation(lstm_model, data_iterators[2], criterion, device=device, include_lengths=include_lens)

@@ -1,7 +1,7 @@
 BATCH_SIZE = 256
-INCLUDE_LENGTHS = False
+INCLUDE_LENGTHS = True
 OPTIMIZER_LEARNING_RATE = 1
-SCHEDULER_STEP_SIZE = 0.1  # scheduler setting of 1 is too agressive
+SCHEDULER_STEP_SIZE = 0.1 # scheduler setting of 1 is too agressive
 SCHEDULER_GAMMA = 0.1
 SET_LOWERCASE = True
 RANDOM_SEED = 1234

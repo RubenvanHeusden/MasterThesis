@@ -13,6 +13,9 @@ class SparselyGatedMoE(nn.Module):
 
     def __init__(self):
         super(SparselyGatedMoE, self).__init__()
+        self.expert_assignments = None
 
     def forward(self, x):
+        # Handles the noise gates and the load balancing
+
         pass

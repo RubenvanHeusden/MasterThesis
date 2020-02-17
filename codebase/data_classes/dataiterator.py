@@ -3,7 +3,7 @@ import torch
 
 class DataIterator:
 
-    def __init__(self, iterator, text_name: str = "text", label_name: str = "label") -> None:
+    def __init__(self, iterator, text_name: str = "text", label_name: str = "label", task_name=None) -> None:
         """
         @param iterator: torchtext iterator containing batches of the dataset
         @param text_name: attribute name of the text variable
@@ -12,10 +12,11 @@ class DataIterator:
         self.iterator = iterator
         self.text_name = text_name
         self.label_name = label_name
+        self.task_name = task_name
 
     def __iter__(self):
         for batch in self.iterator:
-            yield getattr(batch, self.text_name), getattr(batch, self.label_name)
+            yield getattr(batch, self.text_name), getattr(batch, self.label_name), self.task_name
 
     def __len__(self) -> int:
         return len(self.iterator)

@@ -4,7 +4,7 @@ from typing import List, Any
 import torch
 
 class CustomDataLoader:
-    def __init__(self, data_splits, text_field, label_field):
+    def __init__(self, data_splits, text_field, label_field, task_name = None):
         """
 
         @param data_splits: a list of Dataset objects that should be turned into iterators
@@ -14,12 +14,13 @@ class CustomDataLoader:
         self.data_splits = data_splits
         self.text_field = text_field
         self.label_field = label_field
+        self.task_name = task_name
 
     def construct_iterators(self, vectors: str, vector_cache: str, batch_size: int, device) -> List[Any]:
         """
         @param vectors: a string containing the type of vectors to be used
         (see https://torchtext.readthedocs.io/en/latest/vocab.html for possible options)
-        @param vector_cache: string containing the location of the vectors
+        @param vector_cache: string containing the lowcation of the vectors
         @param batch_size: integer specifying the size of the batches
         @param device: torch.Device indicating whether to run on CPU / GPU
         @return: list containing the iterators for train, eval and (test)
@@ -41,7 +42,7 @@ class CustomDataLoader:
             repeat=False
         )
 
-        iterators.append(DataIterator(train_iter))
+        iterators.append(DataIterator(train_iter, task_name=self.task_name))
         # For the other iterators (either val or test, val) construct a standard iterator with
         # appropriate settings for evaluation and test sets
         for x in range(len(self.data_splits[1:])):
@@ -49,5 +50,5 @@ class CustomDataLoader:
                          device=device, sort=False,
                          sort_within_batch=False,
                          repeat=False)
-            iterators.append(DataIterator(iter))
+            iterators.append(DataIterator(iter, task_name=self.task_name))
         return iterators

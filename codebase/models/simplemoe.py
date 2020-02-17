@@ -26,24 +26,24 @@ class SimpleMoE(nn.Module):
             dimensionality of the output i.e. the number of classes
             in classification
     """
-    def __init__(self, input_dim, gating_network, expert_networks, output_dim: int, device=torch.device("cpu")):
+    def __init__(self, gating_network, expert_networks, output_dim: int, device=torch.device("cpu"),
+                 include_lens=False):
         super(SimpleMoE, self).__init__()
-        self.input_dim = input_dim
         self.gating_network = gating_network
         self.expert_networks = nn.ModuleList(expert_networks)
         for x in range(len(expert_networks)):
             self.expert_networks[x] = self.expert_networks[x].to(device)
         self.output_dim = output_dim
+        self.include_lens = include_lens
         self.softmax = nn.Softmax(dim=1)
         self.params = {
-            "input_dim": input_dim,
             "gating_network": gating_network,
             "expert_networks": expert_networks,
             "output_dim": output_dim,
             "device": device
         }
 
-    def forward(self, x, lengths="False"):
+    def forward(self, x):
         """
         :params
             :x
@@ -54,21 +54,12 @@ class SimpleMoE(nn.Module):
         by the outputs of the gating network with the outputs of the gating network
         """
         # the first step is to put x through all the networks
-        if lengths != "False":
-            expert_weights = self.softmax(self.gating_network(x, lengths=lengths)).unsqueeze(1)
-            # best_experts = expert_weights.argmax(dim=2)
-            # new_weights = torch.zeros_like(expert_weights).squeeze()
-            # expert_weights = new_weights.scatter(index=best_experts, src=torch.ones_like(best_experts).float(), dim=1)
-            # expert_weights = expert_weights.unsqueeze(1)
-            x = torch.stack([net(x, lengths=lengths) for net in self.expert_networks], dim=0).permute(1, 0, 2)
-            x = torch.bmm(expert_weights, x)
-            return x.squeeze()
 
         expert_weights = self.softmax(self.gating_network(x)).unsqueeze(1)
 
         x = torch.stack([net(x) for net in self.expert_networks], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
-        return x.squeeze()
+        return x.squeeze(), expert_weights
 
 
 
