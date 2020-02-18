@@ -6,7 +6,7 @@ from typing import List, Any, Dict
 
 
 class MultiGateMixtureofExperts(nn.Module):
-    def __init__(self, shared_layers: List[Any], gating_networks: List[Any], towers: Dict[Any], device,
+    def __init__(self, shared_layers: List[Any], gating_networks: List[Any], towers: Dict[Any, Any], device,
                  include_lens: bool, batch_size: int):
         """
 

@@ -4,6 +4,9 @@ import torchvision
 import torch.nn.functional as F
 
 
+# TODO: I should build this convnet specifically for text classification
+
+
 class ConvNet(nn.Module):
     """
     This class implements a basic convolutional neural network for use

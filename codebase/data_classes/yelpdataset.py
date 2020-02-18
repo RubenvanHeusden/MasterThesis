@@ -7,7 +7,7 @@ from typing import List
 
 class YelpDataset:
 
-        def __init__(self, text_field: Field, label_field: Field, path: str) -> None:
+        def __init__(self, text_field: Field, label_field: Field, path: str = "../.data/yelp") -> None:
             """
             @param text_field: The textfield variable should be an instance of torchtext.data.Field
             and specificies the how the field containing the text should be pre-processed

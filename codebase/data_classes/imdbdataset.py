@@ -4,7 +4,6 @@ from typing import List, Any
 
 
 class IMDBDataset:
-
     def __init__(self, text_field: Field, label_field: Field, path: str = None) -> None:
         """
         @param text_field: The textfield variable should be an instance of torchtext.data.Field

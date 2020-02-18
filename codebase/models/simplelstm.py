@@ -38,8 +38,6 @@ class SimpleLSTM(nn.Module):
     def forward(self, x):
         """
         @param x: tensor of size (batch_size, seq_length)
-        @param lengths: if self.use_lengths this is a vector containing the true length of each sequence
-        which is then used for removing the padding from the input
         @return: 
         """
         if self.use_lengths:

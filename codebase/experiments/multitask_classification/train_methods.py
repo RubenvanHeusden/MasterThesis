@@ -34,16 +34,15 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             batch_running_loss = 0.0
             optimizer.zero_grad()
             X, y, task = batch
-            # Whether the padding should be removed when fed into the LSTM
-            if include_lengths:
-                inputs, lengths = X
-                inputs = inputs.to(device)
-                lengths = lengths.to(device)
-                outputs = model(inputs, task, lengths)
+            if isinstance(X, tuple):
+                X = list(X)
+                for k in range(len(X)):
+                    X[k] = X[k].to(device)
             else:
                 X = X.to(device)
+            # Whether the padding should be removed when fed into the LSTM
 
-                outputs = model(X, task)
+            outputs = model(X, task)
 
             loss = criterion(outputs, y)
             batch_running_loss += loss.item()
@@ -78,7 +77,7 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
     return model
 
 
-def evaluation(model, dataset, criterion, include_lengths=True, device=None):
+def evaluation(model, dataset, criterion, device=None):
     model.to(device)
     # Set the model to evaluation mode, important because of the Dropout Layers
     model = model.eval()
@@ -91,14 +90,13 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
     epoch_recall = 0
     for i, batch in tqdm(enumerate(dataset)):
         X, y, task = batch
-        if include_lengths:
-            inputs, lengths = X
-            inputs = inputs.to(device)
-            lengths = lengths.to(device)
-            outputs = model(inputs, task, lengths)
+        if isinstance(X, tuple):
+            X = list(X)
+            for k in range(len(X)):
+                X[k] = X[k].to(device)
         else:
             X = X.to(device)
-            outputs = model(X, task)
+        outputs = model(X, task)
 
         loss = criterion(outputs, y)
         epoch_running_loss += loss.item()

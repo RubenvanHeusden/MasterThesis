@@ -35,7 +35,6 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             optimizer.zero_grad()
             X, y, _ = batch
             # Whether the padding should be removed when fed into the LSTM
-
             outputs = model(X)
 
             loss = criterion(outputs, y)
