@@ -34,14 +34,6 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             batch_running_loss = 0.0
             optimizer.zero_grad()
             X, y, task = batch
-            if isinstance(X, tuple):
-                X = list(X)
-                for k in range(len(X)):
-                    X[k] = X[k].to(device)
-            else:
-                X = X.to(device)
-            # Whether the padding should be removed when fed into the LSTM
-
             outputs = model(X, task)
 
             loss = criterion(outputs, y)

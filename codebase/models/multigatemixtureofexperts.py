@@ -57,4 +57,5 @@ class MultiGateMixtureofExperts(nn.Module):
         x = torch.stack([net(x) for net in self.shared_layers], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
         x = self.towers[self.tower_dict[tower]](x)
-        return x.squeeze(), expert_weights
+        return x.squeeze()
+        # return x.squeeze(), expert_weights

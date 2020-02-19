@@ -1,22 +1,43 @@
+import argparse
+import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-from torchtext.data import Field, LabelField
-from codebase.data_classes.imdbdataset import IMDBDataset
-from codebase.data_classes.sttdataset import SSTDataset
-from codebase.data_classes.customdataloader import CustomDataLoader
-from codebase.data_classes.yelpdataset import YelpDataset
-from codebase.models.simplelstm import SimpleLSTM
 from torch.optim.lr_scheduler import StepLR
+import itertools
+import numpy as np
+from typing import List, Any, Dict
+from torchtext.data import Field, LabelField
+from codebase.data_classes.customdataloader import CustomDataLoader
+from codebase.data_classes.sttdataset import SSTDataset
+from codebase.data_classes.yelpdataset import YelpDataset
+from codebase.data_classes.imdbdataset import IMDBDataset
+from codebase.models.multigatemixtureofexperts import MultiGateMixtureofExperts
 from codebase.experiments.multitask_classification.train_methods import *
-from codebase.models.simplemoe import SimpleMoE
-from codebase.models.multitaskmodel import MultiTaskModel
+from codebase.models.simplelstm import SimpleLSTM
 from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
-import itertools
-import argparse
 
-def combine_datasets(list_of_dataset_classes, include_lens, set_lowercase, batch_size, task_names, device):
+def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
+                     set_lowercase: bool, batch_size: int, task_names: List[str], device):
+    """
+
+    @param list_of_dataset_classes: List containing the dataset classes that should be loaded for the multitask
+    training and testing
+
+    @param include_lens: boolean indicating whether or not to use the lengths of the original sequence to minimize
+    the amount of padding needed
+
+    @param set_lowercase: boolean indication whether or not to convert all text to lowerdase
+
+    @param batch_size: integer specifying the batch sizes used for training and testing
+
+    @param task_names: list of strings specifying the names of the datasets, this is used for
+    saving the model parameters with the appropriate names
+
+    @param device: torch.device specifying on which device the vectors should be
+
+    @return: combined vocabulary matrix and dataloaders for the  combined datasets
+    """
     # return combined iterators for train, val and test
     print("---Loading in datasets---")
     datasets = {}
@@ -39,9 +60,9 @@ def combine_datasets(list_of_dataset_classes, include_lens, set_lowercase, batch
 
 
 def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_size, scheduler_gamma,
-         use_lengths, do_lowercase, embedding_dim, output_dims, hidden_dim, linear_layers_towrs, n_epochs, logdir,
+         use_lengths, do_lowercase, embedding_dim, output_dims, hidden_dim_g, hidden_dim_experts,
+         n_experts, linear_layers_towers, n_epochs, logdir,
          dataset_names=None):
-
     # TODO: clip gradients
     # for the multitask learning, make a dictionary containing "task": data
 
@@ -53,32 +74,39 @@ def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_si
     torch.backends.cudnn.benchmark = False
     include_lens = use_lengths
 
-    towers = {MLP(hidden_dim, linear_layers_towrs, output_dim): name for output_dim,
+    towers = {MLP(hidden_dim_experts, linear_layers_towers, output_dim): name for output_dim,
                                                                         name in zip(output_dims, dataset_names)}
     total_vocab, train_iterators, test_iterators = combine_datasets(dataset_classes, include_lens=use_lengths,
                                                                     set_lowercase=do_lowercase, batch_size=batch_size,
                            task_names=dataset_names, device=device)
 
-    model = MultiTaskLSTM(vocab=total_vocab, embedding_dim=embedding_dim, hidden_dim=hidden_dim, device=device,
-                            use_lengths=use_lengths)
+    # initialize the multiple LSTMs and gating functions
+    gating_networks = [SimpleLSTM(total_vocab, embedding_dim, hidden_dim_g, n_experts,
+                                                           device=device, use_lengths=use_lengths) for _ in
+                                                range(len(dataset_names))]
 
-    multitask_model = MultiTaskModel(shared_layer=model, towers=towers, batch_size=batch_size,
-                                     input_dimension=embedding_dim, device=device, include_lens=use_lengths)
+    shared_layers = [MultiTaskLSTM(total_vocab, embedding_dim, hidden_dim_experts,
+                                                         device=device,
+                                                         use_lengths=use_lengths) for _ in range(n_experts)]
+
+    model = MultiGateMixtureofExperts(shared_layers=shared_layers, gating_networks=gating_networks,
+                                      towers=towers, device=device,include_lens=use_lengths, batch_size=batch_size)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(multitask_model.parameters(), lr=lr)
+    optimizer = optim.SGD(model.parameters(), lr=lr)
     scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 
-    train(multitask_model, criterion, optimizer, scheduler, list(train_iterators), device=device,
+    train(model, criterion, optimizer, scheduler, list(train_iterators), device=device,
           include_lengths=include_lens, save_path=logdir, save_name="%s_datasets" % "_".join(dataset_names),
           use_tensorboard=True, n_epochs=n_epochs)
 
     print("Evaluating model")
-    multitask_model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
+    model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
                                                                                               n_epochs-1)))
     for i, iterator in enumerate(test_iterators):
         print("evaluating on dataset %s" % dataset_names[i])
-        evaluation(multitask_model, iterator, criterion, device=device)
+        evaluation(model, iterator, criterion, device=device)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -98,10 +126,12 @@ if __name__ == "__main__":
     parser.add_argument("--do_lowercase", type=str, default="True")
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--embedding_dim", type=int, default=300)
-    parser.add_argument("--hidden_dim", type=int, default=64)
+    parser.add_argument("--hidden_dim_experts", type=int, default=64)
+    parser.add_argument("--hidden_dim_g", type=int, default=8)
     parser.add_argument("--n_epochs", type=int, default=25)
     parser.add_argument("--linear_layers", nargs='+', required=True)
     parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
+    parser.add_argument("--n_experts", type=int, default=3)
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)
@@ -127,4 +157,7 @@ if __name__ == "__main__":
 
     main(datasets, args.device, args.batch_size, args.random_seed, args.learning_rate, args.scheduler_stepsize,
          args.scheduler_gamma, args.use_lengths, args.do_lowercase, args.embedding_dim, output_dimensions,
-         args.hidden_dim, lin_layers, args.n_epochs, args.logdir, dataset_names=dataset_names)
+         args.hidden_dim_g, args.hidden_dim_experts, args.n_experts, lin_layers, args.n_epochs, args.logdir, dataset_names=dataset_names)
+
+
+
