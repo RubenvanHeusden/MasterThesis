@@ -22,43 +22,35 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             shutil.copyfile("config.py", "%s/config.py" % save_path)
 
         # Calculate several training statistics
+        all_predictions = []
+        all_ground_truth_labels = []
         epoch_running_loss = 0.0
-        epoch_precision = 0
-        epoch_recall = 0
-        epoch_correct = 0
-        epoch_total = 0
-        epoch_f1 = 0
-        epoch_acc = 0
 
         for i, batch in tqdm(enumerate(dataset)):
-            batch_running_loss = 0.0
             optimizer.zero_grad()
             X, y, _ = batch
             # Whether the padding should be removed when fed into the LSTM
             outputs = model(X)
 
             loss = criterion(outputs, y)
-            batch_running_loss += loss.item()
-
-            # Calculating several batch statistics
-            batch_correct = (torch.max(outputs, 1)[1].view(y.size()).data == y.data).sum().item()
-            batch_f1 = f1_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
-            batch_recall = recall_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
-            batch_precision = precision_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
-            batch_acc = accuracy_score(y.cpu(), outputs.detach().cpu().argmax(1))
-            epoch_acc += batch_acc
-            epoch_recall += batch_recall
-            epoch_precision += batch_precision
-            epoch_f1 += batch_f1
-            epoch_running_loss += batch_running_loss
-            epoch_correct += batch_correct
-            epoch_total += outputs.shape[0]
             # training the network
             loss.backward()
             optimizer.step()
+
+            # Calculating several batch statistics
+
+            all_predictions.extend(outputs.detach().cpu().argmax(1).tolist())
+            all_ground_truth_labels.extend(y.cpu().tolist())
+            epoch_running_loss += loss.item()
+
+        correct_list = [1 if a == b else 0 for a, b in zip(all_predictions, all_ground_truth_labels)]
+        acc = sum(correct_list) / len(correct_list)
         prog_string = "[|Train| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
-                      % (epoch_running_loss, epoch_correct / epoch_total,
-                         epoch_f1 / (i+1), epoch_recall / (i+1), epoch_precision / (i+1))
+                      % (epoch_running_loss, acc,
+                         f1_score(all_ground_truth_labels, all_predictions, average="micro"),
+                         recall_score(all_ground_truth_labels, all_predictions, average="micro"),
+                         precision_score(all_ground_truth_labels, all_predictions, average="micro"))
+
         with open("%s/results.txt" % save_path, "a") as f:
             f.write(prog_string+"\n")
 
@@ -68,27 +60,14 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
     return model
 
 
-
-
-
-
-
-
-
-
-
-
 def evaluation(model, dataset, criterion, include_lengths=True, device=None):
     model.to(device)
     # Set the model to evaluation mode, important because of the Dropout Layers
     model = model.eval()
     # Calculate several test statistics
     epoch_running_loss = 0.0
-    epoch_correct = 0
-    epoch_total = 0
-    epoch_f1 = 0
-    epoch_precision = 0
-    epoch_recall = 0
+    all_predictions = []
+    all_ground_truth_labels = []
     for i, batch in tqdm(enumerate(dataset)):
         X, y, _ = batch
         outputs = model(X)
@@ -96,19 +75,17 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
         loss = criterion(outputs, y)
         epoch_running_loss += loss.item()
         # Calculate several batch statistics
-        batch_correct = (torch.max(outputs, 1)[1].view(y.size()).data == y.data).sum().item()
-        batch_f1 = f1_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
-        batch_recall = recall_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
-        batch_precision = precision_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
-        epoch_recall += batch_recall
-        epoch_precision+=batch_precision
-        epoch_correct += batch_correct
-        epoch_f1 += batch_f1
-        epoch_total += outputs.shape[0]
+        all_predictions.extend(outputs.detach().cpu().argmax(1).tolist())
+        all_ground_truth_labels.extend(y.cpu().tolist())
 
-    prog_string = "[|Test| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
-                  %(epoch_running_loss, epoch_correct/epoch_total,
-                                                           epoch_f1/(i+1), epoch_recall/(i+1), epoch_precision/(i+1))
+    correct_list = [1 if a == b else 0 for a, b in zip(all_predictions, all_ground_truth_labels)]
+    acc = sum(correct_list) / len(correct_list)
+    prog_string = "[|Train| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
+                  % (epoch_running_loss, acc,
+                     f1_score(all_ground_truth_labels, all_predictions, average="micro"),
+                     recall_score(all_ground_truth_labels, all_predictions, average="micro"),
+                     precision_score(all_ground_truth_labels, all_predictions, average="micro"))
+
     print(prog_string)
 
 
