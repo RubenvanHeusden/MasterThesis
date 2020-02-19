@@ -2,14 +2,12 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torchtext.data import Field, LabelField
-from codebase.data_classes.imdbdataset import IMDBDataset
-from codebase.data_classes.sttdataset import SSTDataset
 from codebase.data_classes.customdataloader import CustomDataLoader
-from codebase.data_classes.yelpdataset import YelpDataset
 from codebase.models.simplelstm import SimpleLSTM
 from codebase.models.simplemoe import SimpleMoE
 from torch.optim.lr_scheduler import StepLR
 from codebase.experiments.single_task_classification.train_methods import *
+from codebase.data_classes.data_utils import single_task_dataset_prep
 import argparse
 
 # TODO: clip gradients
@@ -88,18 +86,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.use_lengths = eval(args.use_lengths)
     args.do_lowercase = eval(args.do_lowercase)
-    if args.dataset == "SST":
-        dataset = SSTDataset
-        output_dim = 2
-    elif args.dataset == "YELP":
-        dataset = YelpDataset
-        output_dim = 5
-    elif args.dataset == "IMDB":
-        dataset = IMDBDataset
-        output_dim = 2
-    else:
-        raise(Exception("Invalid dataset argument, please refer to the help function of the "
-                        "argument parser for details on valid arguments"))
+    dataset, output_dim = single_task_dataset_prep(args.dataset)
 
     # run the main program
     main(dataset, args.device, args.batch_size, args.random_seed, args.learning_rate,

@@ -1,10 +1,9 @@
-from torchtext.datasets import IMDB
-from torchtext.data import Dataset, Field
+from torchtext.data import Dataset, Field, TabularDataset
 from typing import List, Any
 
 
-class IMDBDataset:
-    def __init__(self, text_field: Field, label_field: Field, path: str = "../.data/imdb/aclImdb") -> None:
+class YahooDataset:
+    def __init__(self, text_field: Field, label_field: Field, path: str = "../.data/yahoo") -> None:
         """
         @param text_field: The textfield variable should be an instance of torchtext.data.Field
         and specificies the how the field containing the text should be pre-processed
@@ -14,15 +13,19 @@ class IMDBDataset:
         containing the labels for training
 
         @param path: the path variable should be a string containing the path to the location of the
-        IMDB dataset, when not set, the dataset will be loaded automatically
+        SST dataset, when not set, the dataset will be loaded automatically
         """
         self.text_field = text_field
         self.label_field = label_field
         self.path = path
 
     def load(self) -> List[Dataset]:
-        train, test = IMDB.splits(self.text_field, self.label_field, path=self.path)
+        train, test = TabularDataset.splits(
+            path=self.path,  # the root directory where the data lies
+            train='train.tsv', validation="test.tsv",
+            format='tsv',
+            skip_header=False,
+            # if your csv has a header, make sure to pass this to ensure it doesn't get proceesed as data!
+            fields=(("id", None), ("label", self.label_field), ("text", self.text_field)))
+
         return [train, test]
-
-
-

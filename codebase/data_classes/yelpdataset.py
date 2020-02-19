@@ -29,7 +29,7 @@ class YelpDataset:
                 train='train.csv', validation="test.csv",
                 format='csv',
                 skip_header=True,
-                # if your csv header has a header, make sure to pass this to ensure it doesn't get proceesed as data!
+                # if your csv has a header, make sure to pass this to ensure it doesn't get proceesed as data!
                 fields=(("label", self.label_field), ("text", self.text_field)))
 
             return [train, test]

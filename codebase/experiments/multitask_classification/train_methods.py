@@ -9,16 +9,19 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import precision_score
 from itertools import cycle, repeat
 
-#TODO: towers should be a dict of shape "{"example_task_tower": tower}"
-def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"), include_lengths=False,
-           save_path=None, save_name=None, use_tensorboard=False):
+
+# TODO: towers should be a dict of shape "{"example_task_tower": tower}"
+def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
+          save_path=None, save_name=None, use_tensorboard=False, checkpoint_interval=5,
+          include_lengths=True):
     # Set the model in training mode just to be safe
 
     model.to(device)
     model.train()
     for epoch in range(n_epochs):
         if save_path:
-            torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
+            if epoch % checkpoint_interval == 0:
+                torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
             with open("%s/model_params.txt" % save_path, "w") as f_obj:
                 f_obj.write(str(model.params))
             shutil.copyfile("config.py", "%s/config.py" % save_path)
@@ -60,11 +63,12 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
         scheduler.step()
         prog_string = "[|Train| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
                       % (epoch_running_loss, epoch_correct / epoch_total,
-                         epoch_f1 / i, epoch_recall / i, epoch_precision / i)
+                         epoch_f1 / (i+1), epoch_recall / (i+1), epoch_precision / (i+1))
         with open("%s/results.txt" % save_path, "a") as f:
             f.write(prog_string+"\n")
 
     print('Finished Training')
+    torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
     #print(model.softmax(model.gating_network(inputs, lengths=lengths)).unsqueeze(1))
     return model
 
@@ -98,13 +102,13 @@ def evaluation(model, dataset, criterion, device=None):
         batch_recall = recall_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
         batch_precision = precision_score(y.cpu(), outputs.detach().cpu().argmax(1), average='micro')
         epoch_recall += batch_recall
-        epoch_precision+=batch_precision
+        epoch_precision += batch_precision
         epoch_correct += batch_correct
         epoch_f1 += batch_f1
         epoch_total += outputs.shape[0]
 
     prog_string = "[|Test| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
                   %(epoch_running_loss, epoch_correct/epoch_total,
-                                                           epoch_f1/i, epoch_recall/i, epoch_precision/i)
+                                                           epoch_f1/(i+1), epoch_recall/(i+1), epoch_precision/(i+1))
     print(prog_string)
 

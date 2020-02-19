@@ -3,60 +3,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-import itertools
 import numpy as np
-from typing import List, Any, Dict
-from torchtext.data import Field, LabelField
-from codebase.data_classes.customdataloader import CustomDataLoader
-from codebase.data_classes.sttdataset import SSTDataset
-from codebase.data_classes.yelpdataset import YelpDataset
-from codebase.data_classes.imdbdataset import IMDBDataset
 from codebase.models.multigatemixtureofexperts import MultiGateMixtureofExperts
 from codebase.experiments.multitask_classification.train_methods import *
 from codebase.models.simplelstm import SimpleLSTM
 from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
-
-def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
-                     set_lowercase: bool, batch_size: int, task_names: List[str], device):
-    """
-
-    @param list_of_dataset_classes: List containing the dataset classes that should be loaded for the multitask
-    training and testing
-
-    @param include_lens: boolean indicating whether or not to use the lengths of the original sequence to minimize
-    the amount of padding needed
-
-    @param set_lowercase: boolean indication whether or not to convert all text to lowerdase
-
-    @param batch_size: integer specifying the batch sizes used for training and testing
-
-    @param task_names: list of strings specifying the names of the datasets, this is used for
-    saving the model parameters with the appropriate names
-
-    @param device: torch.device specifying on which device the vectors should be
-
-    @return: combined vocabulary matrix and dataloaders for the  combined datasets
-    """
-    # return combined iterators for train, val and test
-    print("---Loading in datasets---")
-    datasets = {}
-    for i, dataset_class in enumerate(list_of_dataset_classes):
-        TEXT = Field(lower=set_lowercase, include_lengths=include_lens, batch_first=True)
-        # TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True)
-        LABEL = LabelField(dtype=torch.long)
-        dataset = dataset_class(TEXT, LABEL).load()
-        # Load the IMDB dataset and split it into train and test portions
-        dloader = CustomDataLoader(dataset, TEXT, LABEL, task_name=task_names[i])
-        data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
-                                                             batch_size=batch_size, device=device)
-        datasets[task_names[i]] = {'text': TEXT, 'label': LABEL, 'iters': data_iterators}
-
-    total_vocab = torch.cat(tuple(datasets[model]['text'].vocab.vectors for model in datasets.keys()))
-    train_iterators = itertools.chain(*zip(*tuple(datasets[model]['iters'][0] for model in datasets.keys())))
-    test_iterators = list(datasets[model]['iters'][-1] for model in datasets.keys())
-    print("---Finished Loading in datasets---")
-    return total_vocab, list(train_iterators), test_iterators
+from codebase.data_classes.data_utils import combine_datasets, multi_task_dataset_prep
 
 
 def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_size, scheduler_gamma,
@@ -137,27 +90,11 @@ if __name__ == "__main__":
     args.use_lengths = eval(args.use_lengths)
     args.do_lowercase = eval(args.do_lowercase)
     lin_layers = list(map(int, args.linear_layers))
-    dsets = args.datasets
-    output_dimensions = []
-    dataset_names = []
-    datasets = []
-    for dset in dsets:
-        if dset == "SST":
-            dataset_names.append("SST")
-            datasets.append(SSTDataset)
-            output_dimensions.append(2)
-        elif dset == "YELP":
-            dataset_names.append("YELP")
-            datasets.append(YelpDataset)
-            output_dimensions.append(5)
-        elif dset == "IMDB":
-            dataset_names.append("IMDB")
-            datasets.append(IMDBDataset)
-            output_dimensions.append(2)
-
+    output_dimensions, dataset_names, datasets = multi_task_dataset_prep(args.datasets)
     main(datasets, args.device, args.batch_size, args.random_seed, args.learning_rate, args.scheduler_stepsize,
          args.scheduler_gamma, args.use_lengths, args.do_lowercase, args.embedding_dim, output_dimensions,
-         args.hidden_dim_g, args.hidden_dim_experts, args.n_experts, lin_layers, args.n_epochs, args.logdir, dataset_names=dataset_names)
+         args.hidden_dim_g, args.hidden_dim_experts, args.n_experts, lin_layers, args.n_epochs, args.logdir,
+         dataset_names=dataset_names)
 
 
 
