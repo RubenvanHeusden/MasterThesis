@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torch.nn.functional as F
+from typing import List, Any
 
 
 class ConvNet(nn.Module):
@@ -10,8 +11,27 @@ class ConvNet(nn.Module):
     text classification as presented in (Kim,. 2014)
 
     """
-    def __init__(self, input_channels, output_dim, filter_list, embed_matrix, num_filters, dropbout_probs=0.5):
+    def __init__(self, input_channels: int, output_dim: int, filter_list: List[int],
+                 embed_matrix, num_filters: int, dropbout_probs:float=0.5):
+        """
+
+        @param input_channels: integer specifying the number of input channels of the 'image'
+
+        @param output_dim: integer specifying the number of outputs
+
+        @param filter_list: list of integers specifying the size of each kernel that is applied to the image,
+        the outputs of the kernels are concatenated to form the input to the linear layer
+
+        @param embed_matrix: torch Tensor with size [size_vocab, embedding_dim] where each row is a
+        word embedding
+
+        @param num_filters: the amount of filter to apply to the image, this also determins the size
+        of the input to the fully connected layers, which is equal to num_kernels*num_filters
+
+        @param dropbout_probs: float specifying the dropout probabilities
+        """
         super(ConvNet, self).__init__()
+        self.params = locals()
         self.input_channels = input_channels
         self.output_dim = output_dim
         self.filters = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=num_filters, kernel_size=n)
@@ -24,6 +44,10 @@ class ConvNet(nn.Module):
         self.embed.weight.data.copy_(embed_matrix)
 
     def forward(self, x):
+        """
+        @param x: input of size (batch_size, max_sen_length_batch)
+        @return: output of the CNN applied to the input x
+        """
         x = x.unsqueeze(1)
         x = self.embed(x)
         filter_outs = []
