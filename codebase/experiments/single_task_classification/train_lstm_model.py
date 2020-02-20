@@ -15,7 +15,7 @@ import argparse
 
 def main(dataset_class, device, batch_size, random_seed, lr, scheduler_step_size, scheduler_gamma,
          use_lengths, do_lowercase, embedding_dim, output_dim, hidden_dim, n_epochs, logdir,
-         dataset_name=None):
+         dataset_name=None, checkpoint_interval=5, clip_val=0):
 
     torch.cuda.empty_cache()
     torch.manual_seed(random_seed)
@@ -28,14 +28,12 @@ def main(dataset_class, device, batch_size, random_seed, lr, scheduler_step_size
     # TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True)
     LABEL = LabelField(dtype=torch.long)
     print("--- Starting with reading in the %s dataset ---" % dataset_name)
-    #dataset = SSTDataset(TEXT, LABEL, path="../.data/imdb/aclImdb").load()
     dataset = dataset_class(TEXT, LABEL).load()
-    #dataset = YelpDataset(TEXT, LABEL, path="../.data/yelp").load()
     print("--- Finished with reading in the %s dataset ---" % dataset_name)
     # Load the dataset and split it into train and test portions
     dloader = CustomDataLoader(dataset, TEXT, LABEL)
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
-                                                 batch_size=batch_size, device=device)
+                                                 batch_size=batch_size, device=torch.device("cpu"))
 
 
     # Some sample models that can be used are listed below, uncomment the particular model to use it
@@ -48,7 +46,8 @@ def main(dataset_class, device, batch_size, random_seed, lr, scheduler_step_size
     scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 
     train(model, criterion, optimizer, scheduler, data_iterators[0], device=device, include_lengths=include_lens,
-        save_path=logdir, save_name="%s_dataset" % dataset_name, use_tensorboard=False, n_epochs=n_epochs)
+        save_path=logdir, save_name="%s_dataset" % dataset_name, use_tensorboard=False, n_epochs=n_epochs,
+          checkpoint_interval=checkpoint_interval, clip_val=clip_val)
 
     print("Evaluating model")
     model.load_state_dict(torch.load(logdir+"/%s_dataset_epoch_%d.pt" % (dataset_name, n_epochs-1)))
@@ -77,6 +76,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_epochs", type=int, default=25)
     # TODO: set the right path here
     parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
+    parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument("--gradient_clip", type=float, default=0.0)
     args = parser.parse_args()
     args.use_lengths = eval(args.use_lengths)
     args.do_lowercase = eval(args.do_lowercase)
@@ -86,4 +87,5 @@ if __name__ == "__main__":
     main(dataset, args.device, args.batch_size, args.random_seed, args.learning_rate,
          args.scheduler_stepsize, args.scheduler_gamma,
          args.use_lengths, args.do_lowercase, args.embedding_dim, output_dim, args.hidden_dim,
-         args.n_epochs, args.logdir, dataset_name=args.dataset)
+         args.n_epochs, args.logdir, dataset_name=args.dataset, checkpoint_interval=args.save_interval,
+         clip_val=args.gradient_clip)

@@ -1,20 +1,16 @@
 import torch
 import shutil
 from tqdm import tqdm
-from codebase.experiments.single_task_classification.config import *
-from codebase.data_classes.dataiterator import DataIterator
-from torchtext.data import BucketIterator
 from sklearn.metrics import f1_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import precision_score
-from itertools import cycle, repeat
 from collections import defaultdict
 
 
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
 def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
           save_path=None, save_name=None, use_tensorboard=False, checkpoint_interval=5,
-          include_lengths=True):
+          include_lengths=True, clip_val=0):
     # Set the model in training mode just to be safe
 
     model.to(device)
@@ -31,14 +27,21 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
         epoch_running_loss = defaultdict(float)
         # Calculate several training statistics
         for i, batch in tqdm(enumerate(dataset)):
-            batch_running_loss = 0.0
             optimizer.zero_grad()
             X, y, task = batch
+            y = y.to(device)
+            if isinstance(X, tuple):
+                X = list(X)
+                for z in range(len(X)):
+                    X[z] = X[z].to(device)
+            else:
+                X = X.to(device)
             outputs = model(X, task)
-
             loss = criterion(outputs, y)
             # training the network
             loss.backward()
+            if clip_val:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
             optimizer.step()
             all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
             all_ground_truth_labels[task].extend(y.cpu().tolist())
@@ -74,6 +77,13 @@ def evaluation(model, dataset, criterion, device=None):
     all_ground_truth_labels = defaultdict(list)
     for i, batch in enumerate(dataset):
         X, y, task = batch
+        y = y.to(device)
+        if isinstance(X, tuple):
+            X = list(X)
+            for z in range(len(X)):
+                X[z] = X[z].to(device)
+        else:
+            X = X.to(device)
         outputs = model(X, task)
 
         loss = criterion(outputs, y)

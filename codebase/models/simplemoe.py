@@ -59,7 +59,7 @@ class SimpleMoE(nn.Module):
 
         x = torch.stack([net(x) for net in self.expert_networks], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
-        return x.squeeze(), expert_weights
+        return x.squeeze()
 
 
 

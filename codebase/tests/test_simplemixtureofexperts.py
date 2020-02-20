@@ -30,15 +30,14 @@ class TestSimpleMixtureofExperts(unittest.TestCase):
         sequence_length = 128
         x = torch.randint(low=0, high=126, size=(batch_size, sequence_length))
         x = self.model(x)
-        self.assertEqual(x[0].shape, torch.Size([self.num_outs]))
+        self.assertEqual(x.shape, torch.Size([self.num_outs]))
 
     def test_output_batches(self):
         batch_size = 8
         sequence_length = 32
         x = torch.randint(low=0, high=30, size=(batch_size, sequence_length))
         x = self.model(x)
-        self.assertEqual(x[0].shape, torch.Size([batch_size, self.num_outs]))
-
+        self.assertEqual(x.shape, torch.Size([batch_size, self.num_outs]))
 
     def test_model_with_included_lengths(self):
         pass

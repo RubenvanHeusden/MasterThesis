@@ -7,8 +7,9 @@ from torchtext.data import BucketIterator
 from sklearn.metrics import f1_score, recall_score, precision_score, accuracy_score, classification_report
 from scipy.stats import variation
 
+
 def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"), include_lengths=False,
-           save_path=None, save_name=None, use_tensorboard=False, checkpoint_interval=5):
+           save_path=None, save_name=None, use_tensorboard=False, checkpoint_interval=5, clip_val=0):
     # Set the model in training mode just to be safe
 
     model.to(device)
@@ -29,12 +30,21 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
         for i, batch in tqdm(enumerate(dataset)):
             optimizer.zero_grad()
             X, y, _ = batch
+            y = y.to(device)
             # Whether the padding should be removed when fed into the LSTM
+            if isinstance(X, tuple):
+                X = list(X)
+                for z in range(len(X)):
+                    X[z] = X[z].to(device)
+            else:
+                X = X.to(device)
             outputs = model(X)
 
             loss = criterion(outputs, y)
             # training the network
             loss.backward()
+            if clip_val:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
             optimizer.step()
 
             # Calculating several batch statistics
@@ -70,6 +80,13 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
     all_ground_truth_labels = []
     for i, batch in tqdm(enumerate(dataset)):
         X, y, _ = batch
+        y = y.to(device)
+        if isinstance(X, tuple):
+            X = list(X)
+            for z in range(len(X)):
+                X[z] = X[z].to(device)
+        else:
+            X = X.to(device)
         outputs = model(X)
 
         loss = criterion(outputs, y)
@@ -87,18 +104,6 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
                      precision_score(all_ground_truth_labels, all_predictions, average="micro"))
 
     print(prog_string)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def train_moe(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"), include_lengths=False,
@@ -126,17 +131,15 @@ def train_moe(model, criterion, optimizer, scheduler, dataset, n_epochs=5, devic
             batch_running_loss = 0.0
             optimizer.zero_grad()
             X, y, _ = batch
+            y = y.to(device)
             # Whether the padding should be removed when fed into the LSTM
-            if include_lengths:
-                inputs, lengths = X
-                inputs = inputs.to(device)
-                lengths = lengths.to(device)
-                #TODO REMOVE IF WEIGHTING IS NOT USED
-                outputs, weights = model(inputs, lengths)
+            if isinstance(X, tuple):
+                X = list(X)
+                for z in range(len(X)):
+                    X[z] = X[z].to(device)
             else:
                 X = X.to(device)
-
-                outputs, weights = model(X)
+            outputs, weights = model(X)
 
             weights_loss = torch.from_numpy(variation(torch.sum(weights.detach().cpu(), dim=0), axis=1)).cuda()
             loss = criterion(outputs, y) + 30*(weights_loss**2)
@@ -193,6 +196,7 @@ def evaluation_moe(model, dataset, criterion, include_lengths=True, device=None)
     epoch_recall = 0
     for i, batch in tqdm(enumerate(dataset)):
         X, y, _ = batch
+        y = y.to(device)
         if include_lengths:
             inputs, lengths = X
             inputs = inputs.to(device)

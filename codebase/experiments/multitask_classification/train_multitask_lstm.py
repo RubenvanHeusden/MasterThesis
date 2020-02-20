@@ -12,7 +12,7 @@ import argparse
 
 def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_size, scheduler_gamma,
          use_lengths, do_lowercase, embedding_dim, output_dims, hidden_dim, linear_layers_towrs, n_epochs, logdir,
-         dataset_names=None):
+         dataset_names=None, checkpoint_interval=5, clip_val=0):
 
     # TODO: clip gradients
     # for the multitask learning, make a dictionary containing "task": data
@@ -29,7 +29,7 @@ def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_si
                                                                         name in zip(output_dims, dataset_names)}
     total_vocab, train_iterators, test_iterators = combine_datasets(dataset_classes, include_lens=use_lengths,
                                                                     set_lowercase=do_lowercase, batch_size=batch_size,
-                           task_names=dataset_names, device=device)
+                           task_names=dataset_names)
 
     model = MultiTaskLSTM(vocab=total_vocab, embedding_dim=embedding_dim, hidden_dim=hidden_dim, device=device,
                             use_lengths=use_lengths)
@@ -43,7 +43,7 @@ def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_si
 
     train(multitask_model, criterion, optimizer, scheduler, list(train_iterators), device=device,
           include_lengths=include_lens, save_path=logdir, save_name="%s_datasets" % "_".join(dataset_names),
-          use_tensorboard=True, n_epochs=n_epochs)
+          use_tensorboard=True, n_epochs=n_epochs, checkpoint_interval=checkpoint_interval, clip_val=clip_val)
 
     print("Evaluating model")
     multitask_model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
@@ -74,6 +74,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_epochs", type=int, default=25)
     parser.add_argument("--linear_layers", nargs='+', required=True)
     parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
+    parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument("--gradient_clip", type=float, default=0.0)
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)
@@ -82,4 +84,5 @@ if __name__ == "__main__":
     output_dimensions, dataset_names, datasets = multi_task_dataset_prep(args.datasets)
     main(datasets, args.device, args.batch_size, args.random_seed, args.learning_rate, args.scheduler_stepsize,
          args.scheduler_gamma, args.use_lengths, args.do_lowercase, args.embedding_dim, output_dimensions,
-         args.hidden_dim, lin_layers, args.n_epochs, args.logdir, dataset_names=dataset_names)
+         args.hidden_dim, lin_layers, args.n_epochs, args.logdir, dataset_names=dataset_names,
+         checkpoint_interval=args.save_interval, clip_val=args.gradient_cip)

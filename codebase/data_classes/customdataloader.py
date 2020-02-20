@@ -3,8 +3,9 @@ from codebase.data_classes.dataiterator import DataIterator
 from typing import List, Any
 import torch
 
+
 class CustomDataLoader:
-    def __init__(self, data_splits, text_field, label_field, task_name = None):
+    def __init__(self, data_splits, text_field, label_field, task_name=None):
         """
 
         @param data_splits: a list of Dataset objects that should be turned into iterators

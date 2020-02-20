@@ -16,7 +16,8 @@ import argparse
 
 def main(dataset_class, device, batch_size, random_seed, lr, scheduler_step_size, scheduler_gamma,
          use_lengths, do_lowercase, embedding_dim, output_dim, hidden_dim_g, hidden_dim_experts,
-         n_experts, n_epochs, logdir, dataset_name=None):
+         n_experts, n_epochs, logdir, dataset_name=None, checkpoint_interval=5,
+         clip_val=0):
 
     torch.cuda.empty_cache()
     torch.manual_seed(random_seed)
@@ -35,7 +36,7 @@ def main(dataset_class, device, batch_size, random_seed, lr, scheduler_step_size
     # Load the dataset and split it into train and test portions
     dloader = CustomDataLoader(dataset, TEXT, LABEL)
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
-                                                 batch_size=batch_size, device=device)
+                                                 batch_size=batch_size, device=torch.device("cpu"))
 
     g = SimpleLSTM(vocab=TEXT.vocab.vectors, embedding_dim=embedding_dim, hidden_dim=hidden_dim_g,
                    output_dim=n_experts, device=device, use_lengths=use_lengths)
@@ -51,12 +52,13 @@ def main(dataset_class, device, batch_size, random_seed, lr, scheduler_step_size
     optimizer = optim.SGD(model.parameters(), lr=lr)
     scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
 
-    train_moe(model, criterion, optimizer, scheduler, data_iterators[0], device=device, include_lengths=use_lengths,
-        save_path=logdir, save_name="%s_dataset" % dataset_name, use_tensorboard=False, n_epochs=n_epochs)
+    train(model, criterion, optimizer, scheduler, data_iterators[0], device=device, include_lengths=use_lengths,
+        save_path=logdir, save_name="%s_dataset" % dataset_name, use_tensorboard=False, n_epochs=n_epochs,
+              checkpoint_interval=checkpoint_interval, clip_val=clip_val)
 
     print("Evaluating model")
     model.load_state_dict(torch.load(logdir+"/%s_dataset_epoch_%d.pt" % (dataset_name, n_epochs-1)))
-    evaluation_moe(model, data_iterators[-1], criterion, device=device, include_lengths=use_lengths)
+    evaluation(model, data_iterators[-1], criterion, device=device, include_lengths=use_lengths)
 
 
 if __name__ == "__main__":
@@ -83,6 +85,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_experts",type=int, default=3)
     # TODO: set the right path here
     parser.add_argument("--logdir", type=str, default="saved_models/MoE")
+    parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument("--gradient_clip", type=float, default=0.0)
     args = parser.parse_args()
     args.use_lengths = eval(args.use_lengths)
     args.do_lowercase = eval(args.do_lowercase)
@@ -93,5 +97,6 @@ if __name__ == "__main__":
          args.scheduler_stepsize, args.scheduler_gamma,
          args.use_lengths, args.do_lowercase, args.embedding_dim, output_dim, args.hidden_dim_g,
          args.hidden_dim_experts, args.n_experts,
-         args.n_epochs, args.logdir, dataset_name=args.dataset)
+         args.n_epochs, args.logdir, dataset_name=args.dataset, checkpoint_interval=args.save_interval,
+         clip_val=args.gradient_clip)
 

@@ -36,7 +36,7 @@ class TestMultigateModel(unittest.TestCase):
 
         for task in range(self.n_tasks):
             x = torch.rand(size=(batch_size, self.n_in))
-            outputs = self.model(x, tower=self.names[task])[0]
+            outputs = self.model(x, tower=self.names[task])
             self.assertEqual(outputs.shape, torch.Size([self.task_outs[task]]))
 
     def test_output_batch_input(self):
@@ -45,7 +45,7 @@ class TestMultigateModel(unittest.TestCase):
 
         for task in range(self.n_tasks):
             x = torch.rand(size=(batch_size, self.n_in))
-            outputs = self.model(x, tower=self.names[task])[0]
+            outputs = self.model(x, tower=self.names[task])
             self.assertEqual(outputs.shape, torch.Size([batch_size, self.task_outs[task]]))
 
     def test_output_with_included_lengths(self):
@@ -69,7 +69,7 @@ class TestMultigateModel(unittest.TestCase):
             sentence_lengths = torch.randint(low=1, high=self.n_in - 1, size=[batch_size])
             x = torch.randint(low=0, high=30, size=(batch_size, self.n_in))
 
-            outputs = self.model((x, sentence_lengths), tower=self.names[task])[0]
+            outputs = self.model((x, sentence_lengths), tower=self.names[task])
             self.assertEqual(outputs.shape, torch.Size([batch_size, self.task_outs[task]]))
 
     def test_weight_shapes(self):

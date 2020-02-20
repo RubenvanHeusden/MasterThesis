@@ -11,7 +11,7 @@ from codebase.data_classes.sttdataset import SSTDataset
 
 
 def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
-                     set_lowercase: bool, batch_size: int, task_names: List[str], device):
+                     set_lowercase: bool, batch_size: int, task_names: List[str]):
     """
 
     @param list_of_dataset_classes: List containing the dataset classes that should be loaded for the multitask
@@ -27,8 +27,6 @@ def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
     @param task_names: list of strings specifying the names of the datasets, this is used for
     saving the model parameters with the appropriate names
 
-    @param device: torch.device specifying on which device the vectors should be
-
     @return: combined vocabulary matrix and dataloaders for the  combined datasets
     """
     # return combined iterators for train, val and test
@@ -42,7 +40,7 @@ def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
         # Load the IMDB dataset and split it into train and test portions
         dloader = CustomDataLoader(dataset, TEXT, LABEL, task_name=task_names[i])
         data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
-                                                             batch_size=batch_size, device=device)
+                                                             batch_size=batch_size, device=torch.device("cpu"))
         datasets[task_names[i]] = {'text': TEXT, 'label': LABEL, 'iters': data_iterators}
 
     total_vocab = torch.cat(tuple(datasets[model]['text'].vocab.vectors for model in datasets.keys()))
