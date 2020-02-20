@@ -53,7 +53,7 @@ def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
 def single_task_dataset_prep(dataset_string):
     if dataset_string == "SST":
         dataset = SSTDataset
-        output_dim = 2
+        output_dim = 5
     elif dataset_string == "YELP":
         dataset = YelpDataset
         output_dim = 5
@@ -79,7 +79,7 @@ def multi_task_dataset_prep(list_of_dataset_strings):
         if dset == "SST":
             dataset_names.append("SST")
             datasets.append(SSTDataset)
-            output_dimensions.append(2)
+            output_dimensions.append(5)
         elif dset == "YELP":
             dataset_names.append("YELP")
             datasets.append(YelpDataset)

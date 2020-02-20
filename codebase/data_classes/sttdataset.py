@@ -21,12 +21,12 @@ class SSTDataset:
         self.path = path
 
     def load(self) -> List[Dataset]:
-        if self.path !=None:
+        if self.path:
             train, val, test = SST.splits(self.text_field, self.label_field, path=self.path,
-                                          filter_pred=lambda ex: ex.label != 'neutral')
+                                          fine_grained=True)
         else:
             train, val, test = SST.splits(self.text_field, self.label_field,
-                                          filter_pred=lambda ex: ex.label != 'neutral')
+                                          fine_grained=True)
         return [train, val, test]
 
 
