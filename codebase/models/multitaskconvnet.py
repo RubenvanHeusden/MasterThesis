@@ -12,11 +12,10 @@ class MultitaskConvNet(nn.Module):
     Because this model is used in the multitask setting, the output of the model is not
     fed through a linear layer to accomodate for different task output size.
     """
-    def __init__(self, input_channels, output_dim, filter_list, embed_matrix, num_filters, dropbout_probs=0.5):
-        super(ConvNet, self).__init__()
+    def __init__(self, input_channels, filter_list, embed_matrix, num_filters, dropbout_probs=0.5):
+        super(MultitaskConvNet, self).__init__()
         self.params = locals()
         self.input_channels = input_channels
-        self.output_dim = output_dim
         self.filters = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=num_filters, kernel_size=n)
                                       for n in filter_list])
 

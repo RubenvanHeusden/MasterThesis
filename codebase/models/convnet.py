@@ -58,5 +58,3 @@ class ConvNet(nn.Module):
         output = self.fc_layer(output)
 
         return output
-
-
