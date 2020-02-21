@@ -34,7 +34,7 @@ def main(args):
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
 
     model = SimpleLSTM(vocab=TEXT.vocab.vectors, hidden_dim=args.hidden_dim, output_dim=num_classes,
-                  device=args.device, use_lengths=args.use_lengths)
+                  device=args.device, use_lengths=args.use_lengths, dropout=args.dropout)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
@@ -62,12 +62,12 @@ if __name__ == "__main__":
     parser.add_argument("--do_lowercase", type=str, default="True")
 
     # Training arguments
-    parser.add_argument("--learning_rate", type=float, default=1)
-    parser.add_argument("--scheduler_stepsize", type=float, default=0.1)
-    parser.add_argument("--scheduler_gamma", type=float, default=0.1)
-    parser.add_argument("--random_seed", type=int, default=42)
-    parser.add_argument("--gradient_clip", type=float, default=0.0)
     parser.add_argument("--n_epochs", type=int, default=25)
+    parser.add_argument("--random_seed", type=int, default=42)
+    parser.add_argument("--learning_rate", type=float, default=1)
+    parser.add_argument("--gradient_clip", type=float, default=0.0)
+    parser.add_argument("--scheduler_gamma", type=float, default=0.1)
+    parser.add_argument("--scheduler_stepsize", type=float, default=0.1)
 
     # Data processing arguments
     parser.add_argument("--batch_size", type=int, default=256)
@@ -75,10 +75,10 @@ if __name__ == "__main__":
 
     # LSTM arguments
     parser.add_argument("--hidden_dim", type=int, default=64)
-
+    parser.add_argument("--dropout", type=float, default=0.2)
     # Logging arguments
-    parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
     parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
 
     args = parser.parse_args()
     args.use_lengths = eval(args.use_lengths)
