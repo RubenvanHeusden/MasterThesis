@@ -40,7 +40,7 @@ class ConvNet(nn.Module):
         self.max_over_time_pool = torch.nn.AdaptiveMaxPool2d(1, return_indices=False)
         self.fc_layer = nn.Linear(num_filters*len(filter_list), output_dim)
         self.dropout = nn.Dropout(p=dropbout_probs)
-        self.embed = nn.Embedding(embed_matrix.shape[0], embedding_dim=300)
+        self.embed = nn.Embedding(*embed_matrix.shape)
         self.embed.weight.data.copy_(embed_matrix)
 
     def forward(self, x):

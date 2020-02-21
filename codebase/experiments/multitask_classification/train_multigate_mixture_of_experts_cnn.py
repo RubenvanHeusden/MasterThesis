@@ -44,7 +44,7 @@ def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_si
                        for _ in range(n_experts)]
 
     model = MultiGateMixtureofExperts(shared_layers=shared_layers, gating_networks=gating_networks,
-                                      towers=towers, device=device,include_lens=use_lengths, batch_size=batch_size)
+                                      towers=towers, device=device, include_lens=use_lengths, batch_size=batch_size)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=lr)
@@ -56,7 +56,7 @@ def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_si
           clip_val=clip_val)
 
     print("Evaluating model")
-    model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
+    model.load_state_dict(torch.load("saved_models/MoE/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
                                                                                               n_epochs-1)))
     for i, iterator in enumerate(test_iterators):
         print("evaluating on dataset %s" % dataset_names[i])
