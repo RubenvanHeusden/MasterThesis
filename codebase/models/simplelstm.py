@@ -5,7 +5,7 @@ import torch.nn as nn
 
 
 class SimpleLSTM(nn.Module):
-    def __init__(self, vocab, embedding_dim: int, hidden_dim: int, output_dim: int, dropout: float = 0.3,
+    def __init__(self, vocab, hidden_dim: int, output_dim: int, dropout: float = 0.3,
                  device=torch.device("cpu"), use_lengths=True):
         """
         @param vocab: a vector containing the word embeddings of the word in the train set
@@ -18,18 +18,18 @@ class SimpleLSTM(nn.Module):
         """
         super(SimpleLSTM, self).__init__()
         self.params = locals()
-        self.embed = nn.Embedding(vocab.shape[0], embedding_dim)
+        self.embed = nn.Embedding(*vocab.shape)
         self.embed.weight.data.copy_(vocab)
-        self.embedding_dim = embedding_dim
+        self.embedding_dim = vocab.shape[1]
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
+        self.lstm = nn.LSTM(self.embedding_dim, hidden_dim, batch_first=True)
         self.fc_out = nn.Linear(hidden_dim, output_dim)
         self.dropout = nn.Dropout(dropout)
         self.device = device
         self.use_lengths = use_lengths
         self.params = {"vocab": vocab,
-                       "embedding_dim": embedding_dim,
+                       "embedding_dim": self.embedding_dim,
                        "hidden_dim": hidden_dim,
                        "output_dim": output_dim,
                        "dropout": dropout,
