@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     # Logging arguments
     parser.add_argument("--save_interval", type=int, default=5)
-    parser.add_argument("--logdir", type=str, default="saved_models/MoE")
+    parser.add_argument("--logdir", type=str, default="saved_models/MoE_LSTM")
 
     args = parser.parse_args()
     args.use_lengths = eval(args.use_lengths)
