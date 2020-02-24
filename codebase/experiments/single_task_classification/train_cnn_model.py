@@ -37,7 +37,7 @@ def main(args):
                     embed_matrix=TEXT.vocab.vectors, num_filters=args.num_filters, dropbout_probs=args.dropout)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adadelta(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
     train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device, include_lengths=args.use_lengths,
@@ -66,12 +66,12 @@ if __name__ == "__main__":
 
     # training arguments
     parser.add_argument("--n_epochs", type=int, default=25)
-    parser.add_argument("--random_seed", type=int, default=42)
+    parser.add_argument("--random_seed", type=int, default=1234)
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--learning_rate", type=float, default=1)
     parser.add_argument("--gradient_clip", type=float, default=0.0)
-    parser.add_argument("--scheduler_gamma", type=float, default=0.1)
-    parser.add_argument("--scheduler_stepsize", type=float, default=0.1)
+    parser.add_argument("--scheduler_gamma", type=float, default=0.05)
+    parser.add_argument("--scheduler_stepsize", type=float, default=1)
 
     # CNN specific arguments
     parser.add_argument("--dropout", type=float, default=0.5)

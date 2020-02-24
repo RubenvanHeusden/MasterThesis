@@ -53,6 +53,7 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             all_ground_truth_labels.extend(y.cpu().tolist())
             epoch_running_loss += loss.item()
 
+        scheduler.step()
         correct_list = [1 if a == b else 0 for a, b in zip(all_predictions, all_ground_truth_labels)]
         acc = sum(correct_list) / len(correct_list)
         prog_string = "[|Train| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
@@ -66,7 +67,6 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
 
     print('Finished Training')
     torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
-    #print(model.softmax(model.gating_network(inputs, lengths=lengths)).unsqueeze(1))
     return model
 
 

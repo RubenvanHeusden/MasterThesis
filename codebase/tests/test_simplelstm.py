@@ -10,7 +10,7 @@ class TestSimpleLSTMmodel(unittest.TestCase):
         self.vocab = torch.rand(size=(32, self.embedding_dim))
         self.hidden_dim = 16
         self.output_dim = 5
-        self.model = SimpleLSTM(self.vocab, self.embedding_dim, self.hidden_dim, self.output_dim, dropout=0.3,
+        self.model = SimpleLSTM(self.vocab, self.hidden_dim, self.output_dim, dropout=0.3,
                                 device=torch.device("cpu"), use_lengths=False)
 
     def test_output_single_example(self):

@@ -4,6 +4,7 @@ import torch.nn as nn
 from codebase.models.simplemoe import SimpleMoE
 from codebase.models.simplelstm import SimpleLSTM
 
+
 class TestSimpleMixtureofExperts(unittest.TestCase):
     def setUp(self) -> None:
         self.embedding_dim = 300
@@ -12,11 +13,11 @@ class TestSimpleMixtureofExperts(unittest.TestCase):
         self.hidden_dim = 64
 
         self.vocab = torch.rand(size=(128, self.embedding_dim))
-        self.gating_network = SimpleLSTM(vocab=self.vocab, embedding_dim=self.embedding_dim,
+        self.gating_network = SimpleLSTM(vocab=self.vocab,
                                          hidden_dim=self.hidden_dim, output_dim=self.num_experts,
                                          device=torch.device("cpu"), use_lengths=False)
 
-        self.exerts_networks = [SimpleLSTM(vocab=self.vocab, embedding_dim=self.embedding_dim,
+        self.exerts_networks = [SimpleLSTM(vocab=self.vocab,
                                          hidden_dim=self.hidden_dim, output_dim=self.num_outs,
                                          device=torch.device("cpu"),
                                            use_lengths=False

@@ -11,7 +11,6 @@ class TestMultitaskLSTM(unittest.TestCase):
         self.n_in = 8
         self.vocab = torch.rand(size=(32, self.embedding_dim))
         self.model = MultiTaskLSTM(self.vocab,
-                                   self.embedding_dim,
                                    self.hidden_dim,
                                    device=torch.device("cpu"),
                  use_lengths=False)

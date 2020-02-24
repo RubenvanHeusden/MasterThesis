@@ -12,7 +12,7 @@ class ConvNet(nn.Module):
 
     """
     def __init__(self, input_channels: int, output_dim: int, filter_list: List[int],
-                 embed_matrix, num_filters: int, dropbout_probs:float=0.5):
+                 embed_matrix, num_filters: int, dropbout_probs: float=0.5):
         """
 
         @param input_channels: integer specifying the number of input channels of the 'image'
@@ -34,14 +34,15 @@ class ConvNet(nn.Module):
         self.params = locals()
         self.input_channels = input_channels
         self.output_dim = output_dim
-        self.filters = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=num_filters, kernel_size=n)
-                                      for n in filter_list])
+        self.filters = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=num_filters,
+                                                kernel_size=(n, embed_matrix.shape[1])) for n in filter_list])
 
         self.max_over_time_pool = torch.nn.AdaptiveMaxPool2d(1, return_indices=False)
         self.fc_layer = nn.Linear(num_filters*len(filter_list), output_dim)
         self.dropout = nn.Dropout(p=dropbout_probs)
         self.embed = nn.Embedding(*embed_matrix.shape)
         self.embed.weight.data.copy_(embed_matrix)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         """
@@ -52,7 +53,9 @@ class ConvNet(nn.Module):
         x = self.embed(x)
         filter_outs = []
         for module in self.filters:
-            filter_outs.append(self.max_over_time_pool(module(x)))
+            module_out = self.relu(module(x))
+            module_out = self.max_over_time_pool(module_out)
+            filter_outs.append(module_out)
         pen_ultimate_layer = torch.cat(filter_outs, dim=1)
         output = self.dropout(pen_ultimate_layer).squeeze()
         output = self.fc_layer(output)

@@ -52,16 +52,15 @@ class TestMultigateModel(unittest.TestCase):
         embedding_dim = 20
         hidden_dim = 24
         batch_size = 16
-        # COPY PASTED THIS RESUME CODING FROM HERE
         sentence_lengths = torch.randint(low=1, high=self.n_in-1, size=[batch_size])
 
         vocab = torch.rand(size=(128, embedding_dim))
         use_lengths = True
-        self.model.gating_networks = nn.ModuleList([SimpleLSTM(vocab, embedding_dim, hidden_dim, self.n_experts,
+        self.model.gating_networks = nn.ModuleList([SimpleLSTM(vocab, hidden_dim, self.n_experts,
                                                                device=torch.device(
             "cpu"), use_lengths=use_lengths) for _ in range(self.n_tasks)])
 
-        self.model.shared_layers = nn.ModuleList([SimpleLSTM(vocab, embedding_dim, hidden_dim, self.n_out_hidden,
+        self.model.shared_layers = nn.ModuleList([SimpleLSTM(vocab, hidden_dim, self.n_out_hidden,
                                                        device=torch.device("cpu"),
                                                        use_lengths=use_lengths) for _ in range(self.n_experts)])
 
