@@ -13,9 +13,7 @@ class MultiTaskLSTM(nn.Module):
         """
 
         @param vocab: a vector containing the word embeddings of the word in the train set
-        @param embedding_dim: int specifying the dimensionality of the word embeddings
         @param hidden_dim: int specifying number of hidden units in LSTM
-        @param output_dim: int specifying the number of output units
         @param dropout: float specifying the dropout rotia
         @param device: torch.device specifying if model is ran on cpu or gpu
         @param use_lengths: boolean specifying whether to remove padding for LSTM input or not

@@ -16,8 +16,8 @@ class MultitaskConvNet(nn.Module):
         super(MultitaskConvNet, self).__init__()
         self.params = locals()
         self.input_channels = input_channels
-        self.filters = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=num_filters, kernel_size=n)
-                                      for n in filter_list])
+        self.filters = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=num_filters,
+                                                kernel_size=(n, embed_matrix.shape[1])) for n in filter_list])
 
         self.max_over_time_pool = torch.nn.AdaptiveMaxPool2d(1, return_indices=False)
         self.dropout = nn.Dropout(p=dropbout_probs)

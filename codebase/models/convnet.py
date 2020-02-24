@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
-import torchvision
-import torch.nn.functional as F
-from typing import List, Any
+from typing import List
 
 
 class ConvNet(nn.Module):

@@ -12,54 +12,51 @@ from codebase.models.mlp import MLP
 from codebase.data_classes.data_utils import combine_datasets, multi_task_dataset_prep
 
 
-def main(dataset_classes, device, batch_size, random_seed, lr, scheduler_step_size, scheduler_gamma,
-         use_lengths, do_lowercase, embedding_dim, output_dims, hidden_dim_g, hidden_dim_experts,
-         n_experts, linear_layers_towers, n_epochs, logdir,
-         dataset_names=None, checkpoint_interval=5, clip_val=0):
-    # TODO: clip gradients
-    # for the multitask learning, make a dictionary containing "task": data
+def main():
 
-    # Set the random seed for experiments (check if I need to do this for all the other files as well)
     torch.cuda.empty_cache()
-    torch.manual_seed(random_seed)
-    np.random.seed(random_seed)
+    torch.manual_seed(args.random_seed)
+    np.random.seed(args.random_seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-    include_lens = use_lengths
+    include_lens = args.use_lengths
 
-    towers = {MLP(hidden_dim_experts, linear_layers_towers, output_dim): name for output_dim,
-                                                                        name in zip(output_dims, dataset_names)}
-    total_vocab, train_iterators, test_iterators = combine_datasets(dataset_classes, include_lens=use_lengths,
-                                                                    set_lowercase=do_lowercase, batch_size=batch_size,
-                           task_names=dataset_names)
+    output_dimensions, dataset_names, datasets = multi_task_dataset_prep(args.datasets)
+
+    towers = {MLP(args.hidden_dim_experts, args.linear_layers, output_dim): name for output_dim,
+                                                                        name in zip(output_dimensions, dataset_names)}
+    total_vocab, train_iterators, test_iterators = combine_datasets(datasets, include_lens=args.use_lengths,
+                                                                    set_lowercase=args.do_lowercase,
+                                                                    batch_size=args.batch_size, task_names=dataset_names)
 
     # initialize the multiple LSTMs and gating functions
-    gating_networks = [SimpleLSTM(total_vocab, embedding_dim, hidden_dim_g, n_experts,
-                                                           device=device, use_lengths=use_lengths) for _ in
+    gating_networks = [SimpleLSTM(total_vocab, args.hidden_dim_g, args.n_experts,
+                                                           device=args.device, use_lengths=args.use_lengths) for _ in
                                                 range(len(dataset_names))]
 
-    shared_layers = [MultiTaskLSTM(total_vocab, embedding_dim, hidden_dim_experts,
-                                                         device=device,
-                                                         use_lengths=use_lengths) for _ in range(n_experts)]
+    shared_layers = [MultiTaskLSTM(total_vocab, args.hidden_dim_experts,
+                                                         device=args.device,
+                                                         use_lengths=args.use_lengths) for _ in range(args.n_experts)]
 
     model = MultiGateMixtureofExperts(shared_layers=shared_layers, gating_networks=gating_networks,
-                                      towers=towers, device=device,include_lens=use_lengths, batch_size=batch_size)
+                                      towers=towers, device=args.device, include_lens=args.use_lengths,
+                                      batch_size=args.batch_size)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=lr)
-    scheduler = StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
+    optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+    scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(model, criterion, optimizer, scheduler, list(train_iterators), device=device,
-          include_lengths=include_lens, save_path=logdir, save_name="%s_datasets" % "_".join(dataset_names),
-          use_tensorboard=True, n_epochs=n_epochs, checkpoint_interval=checkpoint_interval,
-          clip_val=clip_val)
+    train(model, criterion, optimizer, scheduler, list(train_iterators), device=args.device,
+          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(dataset_names),
+          use_tensorboard=True, n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
+          clip_val=args.gradient_clip)
 
     print("Evaluating model")
     model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
-                                                                                              n_epochs-1)))
+                                                                                              args.n_epochs-1)))
     for i, iterator in enumerate(test_iterators):
         print("evaluating on dataset %s" % dataset_names[i])
-        evaluation(model, iterator, criterion, device=device)
+        evaluation(model, iterator, criterion, device=args.device)
 
 
 if __name__ == "__main__":
@@ -92,12 +89,8 @@ if __name__ == "__main__":
 
     args.use_lengths = eval(args.use_lengths)
     args.do_lowercase = eval(args.do_lowercase)
-    lin_layers = list(map(int, args.linear_layers))
-    output_dimensions, dataset_names, datasets = multi_task_dataset_prep(args.datasets)
-    main(datasets, args.device, args.batch_size, args.random_seed, args.learning_rate, args.scheduler_stepsize,
-         args.scheduler_gamma, args.use_lengths, args.do_lowercase, args.embedding_dim, output_dimensions,
-         args.hidden_dim_g, args.hidden_dim_experts, args.n_experts, lin_layers, args.n_epochs, args.logdir,
-         dataset_names=dataset_names, checkpoint_interval=args.save_interval, clip_val=args.gradient_clip)
+    args.linear_layers = list(map(int, args.linear_layers))
+    main()
 
 
 

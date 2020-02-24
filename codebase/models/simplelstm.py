@@ -9,7 +9,6 @@ class SimpleLSTM(nn.Module):
                  device=torch.device("cpu"), use_lengths=True):
         """
         @param vocab: a vector containing the word embeddings of the word in the train set
-        @param embedding_dim: int specifying the dimensionality of the word embeddings
         @param hidden_dim: int specifying number of hidden units in LSTM
         @param output_dim: int specifying the number of output units
         @param dropout: float specifying the dropout ratio

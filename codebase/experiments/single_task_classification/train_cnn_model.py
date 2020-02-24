@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # training arguments
     parser.add_argument("--n_epochs", type=int, default=25)
-    parser.add_argument("--random_seed", type=int, default=1234)
+    parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--learning_rate", type=float, default=1)
     parser.add_argument("--gradient_clip", type=float, default=0.0)
