@@ -1,13 +1,24 @@
 import torch
 import itertools
 from typing import List, Any
-from torchtext.data import Field, LabelField
+from torchtext.data import Field, LabelField, Example, TabularDataset, Dataset
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.model_selection import StratifiedShuffleSplit
 from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.data_classes.amazondataset import AmazonDataset
 from codebase.data_classes.yelpdataset import YelpDataset
 from codebase.data_classes.yahoodataset import YahooDataset
 from codebase.data_classes.imdbdataset import IMDBDataset
 from codebase.data_classes.sttdataset import SSTDataset
+from codebase.data_classes.dailydialogdataset import DailyDialogDataset
+from codebase.data_classes.enrondataset import EnronDataset
+from codebase.data_classes.customdataloadermultitask import CustomDataLoaderMultiTask
+import numpy as np
+# TODO: Add complete functionality for new datasets
+
+# TODO: To fix the issue with the vocab not working for multiple tasks
+# change the input to construct iterators so that each entry list contains both
+# datasets
 
 
 def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
@@ -51,50 +62,67 @@ def combine_datasets(list_of_dataset_classes: List[Any], include_lens: bool,
 
 
 def single_task_dataset_prep(dataset_string):
-    if dataset_string == "SST":
+    if dataset_string == "DAILYDIALOG-EMOT":
+        dataset = DailyDialogDataset
+        output_dim = 7
+        target = "emotion"
+
+    elif dataset_string == "DAILYDIALOG-TOPIC":
+        dataset = DailyDialogDataset
+        output_dim = 10
+        target = "topic"
+
+    elif dataset_string == "DAILYDIALOG-ACT":
+        dataset = DailyDialogDataset
+        output_dim = 4
+        target = "act"
+
+    elif dataset_string == "ENRON-CAT":
+        dataset = EnronDataset
+        output_dim = 6
+        target = "category"
+
+    elif dataset_string == "ENRON-EMOT":
+        dataset = EnronDataset
+        output_dim = 10
+        target = "emotion"
+
+    elif dataset_string == "SST":
         dataset = SSTDataset
         output_dim = 5
-    elif dataset_string == "YELP":
-        dataset = YelpDataset
-        output_dim = 5
-    elif dataset_string == "IMDB":
-        dataset = IMDBDataset
-        output_dim = 2
-    elif dataset_string == "AMAZON":
-        dataset = AmazonDataset
-        output_dim = 5
-    elif dataset_string == "YAHOO":
-        dataset = YahooDataset
-        output_dim = 10
+        target = "label"
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
                         "argument parser for details on valid arguments"))
-    return dataset, output_dim
+    return dataset, output_dim, target
 
 
-def multi_task_dataset_prep(list_of_dataset_strings):
-    output_dimensions = []
-    dataset_names = []
-    datasets = []
-    for dset in list_of_dataset_strings:
-        if dset == "SST":
-            dataset_names.append("SST")
-            datasets.append(SSTDataset)
-            output_dimensions.append(5)
-        elif dset == "YELP":
-            dataset_names.append("YELP")
-            datasets.append(YelpDataset)
-            output_dimensions.append(5)
-        elif dset == "IMDB":
-            dataset_names.append("IMDB")
-            datasets.append(IMDBDataset)
-            output_dimensions.append(2)
-        elif dset == "AMAZON":
-            dataset_names.append("AMAZON")
-            datasets.append(AmazonDataset)
-            output_dimensions.append(5)
-        elif dset == "YAHOO":
-            dataset_names.append("YAHOO")
-            datasets.append(YahooDataset)
-            output_dimensions.append(10)
-    return output_dimensions, dataset_names, datasets
+def multi_task_dataset_prep(dataset_string):
+    if dataset_string == "DAILYDIALOG":
+        dataset = DailyDialogDataset
+        output_dim = [7, 4, 10]
+        targets = ("emotion", "act", "category")
+
+    elif dataset_string == "ENRON":
+        dataset = EnronDataset
+        output_dim = [6, 20]
+        targets = ("category", "emotion")
+
+    else:
+        raise(Exception("Invalid dataset argument, please refer to the help function of the "
+                        "argument parser for details on valid arguments"))
+    return dataset, output_dim, targets
+
+
+
+
+def oversampler(train, test, target, text_label, field_label):
+    X = np.array(range(len(train))).reshape(-1, 1)
+    y = []
+    sampler = RandomOverSampler(random_state=0)
+    for example in train:
+        y.append(getattr(example, target))
+    resampled_X, resampled_Y = sampler.fit_resample(X, y)
+    for text, label in zip(resampled_X, resampled_Y):
+        print(text, label)
+

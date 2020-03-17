@@ -40,6 +40,7 @@ class ConvNet(nn.Module):
         self.dropout = nn.Dropout(p=dropbout_probs)
         self.embed = nn.Embedding(*embed_matrix.shape)
         self.embed.weight.data.copy_(embed_matrix)
+        self.embed.requires_grad = True
         self.relu = nn.ReLU()
 
     def forward(self, x):

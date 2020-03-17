@@ -12,6 +12,8 @@ from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.data_classes.data_utils import single_task_dataset_prep
 from codebase.experiments.single_task_classification.train_methods import *
 from codebase.data_classes.customdataloadermultitask import CustomDataLoaderMultiTask
+from codebase.models.bilstm import BiLSTM
+
 
 
 def main(args):
@@ -22,8 +24,7 @@ def main(args):
     # Lines below are make sure cuda is (almost) deterministic, can slow down training
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
-    TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True,
-                 fix_length=500)
+    TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True)
     # TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True)
     LABEL = LabelField(dtype=torch.long)
 
@@ -31,14 +32,13 @@ def main(args):
     # Use name of dataset to get the arguments needed
     print("--- Starting with reading in the %s dataset ---" % args.dataset)
     dataset = dataset_class(text_field=TEXT, stratified_sampling=args.use_stratify).load(targets=target)[:-1]
-
     print("--- Finished with reading in the %s dataset ---" % args.dataset)
     # Load the dataset and split it into train and test portions
     dloader = CustomDataLoaderMultiTask(dataset, TEXT, target)
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
                                                  batch_size=args.batch_size, device=torch.device("cpu"))[0]
 
-    model = SimpleLSTM(vocab=TEXT.vocab.vectors, hidden_dim=args.hidden_dim, output_dim=num_classes,
+    model = BiLSTM(vocab=TEXT.vocab.vectors, hidden_dim=args.hidden_dim, output_dim=num_classes,
                   device=args.device, use_lengths=args.use_lengths, dropout=args.dropout)
 
     total_examples = 0
@@ -74,7 +74,7 @@ if __name__ == "__main__":
                                         -   DAILYDIALOG-TOPIC
                                         -   ENRON-EMOT
                                         -   ENRON-CAT
-                                        """, type=str, default="ENRON-CAT")
+                                        """, type=str, default="DAILYDIALOG-ACT")
 
     parser.add_argument("--use_lengths", type=str, default="True")
     parser.add_argument("--do_lowercase", type=str, default="True")
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--scheduler_stepsize", type=float, default=0.1)
 
     # Data processing arguments
-    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
     # LSTM arguments

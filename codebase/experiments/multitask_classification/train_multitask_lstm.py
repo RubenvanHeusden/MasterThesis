@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+from torchtext.data import Field
 from torch.optim.lr_scheduler import StepLR
 from codebase.experiments.multitask_classification.train_methods import *
 from codebase.models.multitaskmodel import MultiTaskModel
@@ -8,10 +9,11 @@ from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
 from codebase.data_classes.data_utils import combine_datasets, multi_task_dataset_prep
 import argparse
+from codebase.data_classes.customdataloadermultitask import CustomDataLoaderMultiTask
 
 
 def main(args):
-    output_dimensions, dataset_names, datasets = multi_task_dataset_prep(args.datasets)
+    dataset_class, output_dimensions, target_names = multi_task_dataset_prep(args.dataset)
     # Set the random seed for experiments (check if I need to do this for all the other files as well)
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
@@ -19,12 +21,20 @@ def main(args):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     include_lens = args.use_lengths
-
+    TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True,
+                 fix_length=500)
     towers = {MLP(args.hidden_dim, args.linear_layers, output_dim): name for output_dim,
-                                                                        name in zip(output_dimensions, dataset_names)}
-    total_vocab, train_iterators, test_iterators = combine_datasets(datasets, include_lens=args.use_lengths,
-                                                                    set_lowercase=args.do_lowercase,
-                                                                    batch_size=args.batch_size, task_names=dataset_names)
+                                                                        name in zip(output_dimensions, target_names)}
+    # Use name of dataset to get the arguments needed
+    print("--- Starting with reading in the %s dataset ---" % args.dataset)
+    dataset = dataset_class(text_field=TEXT).load(targets=target_names)[:-1]
+    print("--- Finished with reading in the %s dataset ---" % args.dataset)
+    # Load the dataset and split it into train and test portions
+    dloader = CustomDataLoaderMultiTask(dataset, TEXT, target_names)
+    data_iterators, total_vocab = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
+                                                 batch_size=args.batch_size, device=torch.device("cpu"))
+
+
 
     model = MultiTaskLSTM(vocab=total_vocab,  hidden_dim=args.hidden_dim, device=args.device,
                             use_lengths=args.use_lengths)
@@ -37,27 +47,26 @@ def main(args):
     optimizer = optim.SGD(multitask_model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(multitask_model, criterion, optimizer, scheduler, list(train_iterators), device=args.device,
-          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(dataset_names),
+    train(multitask_model, criterion, optimizer, scheduler, list(data_iterators[0]), device=args.device,
+          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           use_tensorboard=True, n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
 
     print("Evaluating model")
-    multitask_model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
+    multitask_model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(target_names),
                                                                                               args.n_epochs-1)))
-    for i, iterator in enumerate(test_iterators):
-        print("evaluating on dataset %s" % dataset_names[i])
+    for i, iterator in enumerate(data_iterators[0]):
+        print("evaluating on dataset %s" % target_names[i])
         evaluation(multitask_model, iterator, criterion, device=args.device)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--datasets", help="""string specifying the dataset to be used
+    parser.add_argument("--dataset", help="""string specifying the dataset to be used
                                         "options are:
-                                        -   SST
-                                        -   YELP
-                                        -   IMDB
-                                        """, nargs='+', required=True)
+                                        -   DAILYDIALOG
+                                        -   ENRON
+                                        """, type=str, default="ENRON")
 
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--learning_rate", type=float, default=1)

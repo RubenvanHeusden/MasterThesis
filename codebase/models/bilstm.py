@@ -4,7 +4,7 @@ import torch.nn as nn
 # TODO: set trainable weights to false
 
 
-class SimpleLSTM(nn.Module):
+class BiLSTM(nn.Module):
     def __init__(self, vocab, hidden_dim: int, output_dim: int, dropout: float = 0.3,
                  device=torch.device("cpu"), use_lengths=True):
         """
@@ -15,15 +15,15 @@ class SimpleLSTM(nn.Module):
         @param device: torch.device specifying if model is ran on cpu or gpu
         @param use_lengths: boolean specifying whether to remove padding for LSTM input or not
         """
-        super(SimpleLSTM, self).__init__()
+        super(BiLSTM, self).__init__()
         self.params = locals()
         self.embed = nn.Embedding(*vocab.shape)
         self.embed.weight.data.copy_(vocab)
         self.embedding_dim = vocab.shape[1]
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
-        self.lstm = nn.LSTM(self.embedding_dim, hidden_dim, batch_first=True)
-        self.fc_out = nn.Linear(hidden_dim, output_dim)
+        self.lstm = nn.LSTM(self.embedding_dim, hidden_dim, batch_first=True, bidirectional=True)
+        self.fc_out = nn.Linear(hidden_dim*2, output_dim)
         self.dropout = nn.Dropout(dropout)
         self.device = device
         self.use_lengths = use_lengths
@@ -37,7 +37,7 @@ class SimpleLSTM(nn.Module):
     def forward(self, x):
         """
         @param x: tensor of size (batch_size, seq_length)
-        @return: 
+        @return:
         """
         if self.use_lengths:
             inputs, lengths = x
@@ -48,16 +48,19 @@ class SimpleLSTM(nn.Module):
             b = x.shape[0]
             x = self.embed(x)
 
-        h_0 = torch.zeros(1, b, self.hidden_dim).to(self.device)
-        c_0 = torch.zeros(1, b, self.hidden_dim).to(self.device)
+        h_0 = torch.zeros(2, b, self.hidden_dim).to(self.device)
+        c_0 = torch.zeros(2, b, self.hidden_dim).to(self.device)
 
         torch.nn.init.xavier_normal_(h_0)
         torch.nn.init.xavier_normal_(c_0)
+
         output, (final_hidden_state, final_cell_state) = self.lstm(x, (h_0, c_0))
+        final_hidden_state = torch.cat([final_hidden_state[0, :, :], final_hidden_state[1, :, :]], dim=1)
         del x
-        del inputs
-        del lengths
+        if self.use_lengths:
+            del inputs
+            del lengths
         del b
         del h_0
         del c_0
-        return self.fc_out(self.dropout(final_hidden_state[-1]))
+        return self.fc_out(self.dropout(final_hidden_state))

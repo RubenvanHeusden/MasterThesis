@@ -28,21 +28,26 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
         # Calculate several training statistics
         for i, batch in tqdm(enumerate(dataset)):
             optimizer.zero_grad()
-            X, y, task = batch
-            y = y.to(device)
+            X, *targets, tasks = batch
+            for y in targets:
+                y = y.to(device)
             if isinstance(X, tuple):
                 X = list(X)
                 for z in range(len(X)):
                     X[z] = X[z].to(device)
             else:
                 X = X.to(device)
-            outputs = model(X, task)
-            loss = criterion(outputs, y)
+            loss = 0
+            for i, task in enumerate(tasks):
+                outputs = model(X, task)
+                # see if we need to even this out
+                loss += criterion(outputs, targets[i])
             # training the network
             loss.backward()
             if clip_val:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
             optimizer.step()
+            quit()
             all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
             all_ground_truth_labels[task].extend(y.cpu().tolist())
             epoch_running_loss[task] += loss.item()

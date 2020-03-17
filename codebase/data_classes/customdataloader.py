@@ -30,7 +30,10 @@ class CustomDataLoader:
         iterators = []
         # Build the vocabulary for the data, this converts all the words into integers
         # pointing to the corresponding rows in the word embedding matrix
-        self.text_field.build_vocab(self.data_splits[0], vectors=vectors, vectors_cache=vector_cache)
+        self.text_field.build_vocab(self.data_splits[0], vectors=vectors, vectors_cache=vector_cache,
+                                    unk_init=lambda x: torch.rand(1, 300))
+
+        # TODO: see how to remove this line, think its wrong
         self.label_field.build_vocab(self.data_splits[0])
 
         # Construct and iterator specifically for training
