@@ -55,8 +55,9 @@ class SimpleLSTM(nn.Module):
         torch.nn.init.xavier_normal_(c_0)
         output, (final_hidden_state, final_cell_state) = self.lstm(x, (h_0, c_0))
         del x
-        del inputs
-        del lengths
+        if self.use_lengths:
+            del inputs
+            del lengths
         del b
         del h_0
         del c_0

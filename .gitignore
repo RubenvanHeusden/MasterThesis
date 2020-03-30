@@ -10,3 +10,4 @@
 **/.vector_cache
 **/saved_models
 **/.ipynb_checkpoints
+**/vector_cache

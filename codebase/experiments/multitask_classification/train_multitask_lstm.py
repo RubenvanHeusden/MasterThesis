@@ -9,7 +9,7 @@ from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
 from codebase.data_classes.data_utils import combine_datasets, multi_task_dataset_prep
 import argparse
-from codebase.data_classes.customdataloadermultitask import CustomDataLoaderMultiTask
+from codebase.data_classes.customdataloader import CustomDataLoaderMultiTask
 
 
 def main(args):

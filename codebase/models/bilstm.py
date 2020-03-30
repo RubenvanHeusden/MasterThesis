@@ -56,6 +56,7 @@ class BiLSTM(nn.Module):
 
         output, (final_hidden_state, final_cell_state) = self.lstm(x, (h_0, c_0))
         final_hidden_state = torch.cat([final_hidden_state[0, :, :], final_hidden_state[1, :, :]], dim=1)
+
         del x
         if self.use_lengths:
             del inputs

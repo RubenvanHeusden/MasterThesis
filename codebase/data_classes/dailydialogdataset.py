@@ -1,8 +1,7 @@
 from torchtext.data import Dataset, Field, TabularDataset, LabelField, Example
 from typing import List, Any
 import torch
-from codebase.data_classes.customdataloadermultitask import CustomDataLoaderMultiTask
-from codebase.data_classes.dataiteratormultitask import DataIteratorMultiTask
+import pandas as pd
 from imblearn.over_sampling import RandomOverSampler
 import numpy as np
 from sklearn.model_selection import StratifiedShuffleSplit
@@ -12,21 +11,23 @@ def stratified_sampler(train, test, target, text_field, label_field):
     shuffler = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=0.30)
     X = []
     y = []
-    fields = [('text', text_field), (target, label_field)]
-
+    fields = [('text', text_field), (target[0], label_field)]
     for example in train:
         X.append(getattr(example, "text"))
-        y.append(getattr(example, target))
+        y.append(getattr(example, target[0]))
 
     for example in test:
         X.append(getattr(example, "text"))
-        y.append(getattr(example, target))
+        y.append(getattr(example, target[0]))
 
+    print(fields)
+    quit()
     train_idx, test_idx = list(shuffler.split(X, y))[0]
     trn = Dataset(examples=[Example.fromlist([X[i], y[i]], fields) for i in train_idx], fields=fields)
     tst = Dataset(examples=[Example.fromlist([X[i], y[i]], fields) for i in test_idx], fields=fields)
 
     return trn, tst
+
 
 class DailyDialogDataset:
     def __init__(self, text_field, path_to_datadir: str = "../.data/dailydialog",
@@ -40,36 +41,17 @@ class DailyDialogDataset:
         """
         self.text_field = text_field
         self.path_to_datadir = path_to_datadir
-        self.stratified_sampling = False
+        self.stratified_sampling = stratified_sampling
 
     def load(self, targets=('emotion', 'act', 'topic')):
 
-        dset_row = (("id", None),
-                    ("text", self.text_field),
-                    ("emotion", LabelField(dtype=torch.long)),
-                    ("act", LabelField(dtype=torch.long)),
-                    ("topic", LabelField(dtype=torch.long)))
-
-        if targets == "emotion":
-            dset_row = (("id", None),
-                        ("text", self.text_field),
-                        ("emotion", LabelField(dtype=torch.long)),
-                        ("act", None),
-                        ("topic", None))
-
-        if targets == "act":
-            dset_row = (("id", None),
-                        ("text", self.text_field),
-                        ("emotion", None),
-                        ("act", LabelField(dtype=torch.long)),
-                        ("topic", None))
-
-        if targets == "topic":
-            dset_row = (("id", None),
-                        ("text", self.text_field),
-                        ("emotion", None),
-                        ("act", None),
-                        ("topic", LabelField(dtype=torch.long)))
+        dset_row = [("id", None), ("text", self.text_field)]
+        field_headers = list(pd.read_csv(self.path_to_datadir+"/train.csv"))[2:]
+        for header in field_headers:
+            if header in targets:
+                dset_row.append((header, LabelField(dtype=torch.long)))
+            else:
+                dset_row.append((header, None))
 
         train, test = TabularDataset.splits(
             path=self.path_to_datadir,  # the root directory where the data lies
@@ -78,7 +60,8 @@ class DailyDialogDataset:
             skip_header=True,
             # if your csv has a header, make sure to pass this to ensure it doesn't get proceesed as data!
             fields=dset_row)
+
         if self.stratified_sampling:
             train, test = stratified_sampler(train, test, targets, text_field=self.text_field,
                                   label_field=LabelField(dtype=torch.long))
-        return train, test, targets
+        return train, test
