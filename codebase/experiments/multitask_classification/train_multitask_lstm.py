@@ -9,7 +9,7 @@ from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
 from codebase.data_classes.data_utils import combine_datasets, multi_task_dataset_prep
 import argparse
-from codebase.data_classes.customdataloader import CustomDataLoaderMultiTask
+from codebase.data_classes.customdataloader import CustomDataLoader
 
 
 def main(args):
@@ -30,7 +30,7 @@ def main(args):
     dataset = dataset_class(text_field=TEXT).load(targets=target_names)[:-1]
     print("--- Finished with reading in the %s dataset ---" % args.dataset)
     # Load the dataset and split it into train and test portions
-    dloader = CustomDataLoaderMultiTask(dataset, TEXT, target_names)
+    dloader = CustomDataLoader(dataset, TEXT, target_names)
     data_iterators, total_vocab = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
 

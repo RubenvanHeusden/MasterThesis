@@ -5,6 +5,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import precision_score
 from collections import defaultdict
+from torch.utils.tensorboard import SummaryWriter
 
 
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
@@ -15,13 +16,20 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
 
     model.to(device)
     model.train()
+
+    # if tensorboard_dir:
+    #     writer = SummaryWriter(tensorboard_dir)
+    #     if include_lengths:
+    #         s = dataset.sample().cuda()
+    #         sample = s, torch.tensor([s.shape[0]]).cuda()
+    #     else:
+    #         sample = dataset.sample().cuda().unsqueeze(0)
+    #     writer.add_graph(model, [sample])
+
     for epoch in range(n_epochs):
         if save_path:
             if epoch % checkpoint_interval == 0:
                 torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
-            with open("%s/model_params.txt" % save_path, "w") as f_obj:
-                f_obj.write(str(model.params))
-            shutil.copyfile("config.py", "%s/config.py" % save_path)
         all_predictions = defaultdict(list)
         all_ground_truth_labels = defaultdict(list)
         epoch_running_loss = defaultdict(float)

@@ -3,7 +3,7 @@ import shutil
 from tqdm import tqdm
 from sklearn.metrics import f1_score, recall_score, precision_score
 from torch.utils.tensorboard import SummaryWriter
-
+import pandas as pd
 
 def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"), include_lengths=False,
            save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5, clip_val=0):
@@ -56,7 +56,7 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
 
         scheduler.step()
         correct_list = [1 if a == b else 0 for a, b in zip(all_predictions, all_ground_truth_labels)]
-        #print(sum([1 for item in all_predictions if item != 0]))
+        print(sum([1 for item in all_predictions if item != 0]))
         acc = sum(correct_list) / len(correct_list)
         prog_string = "[|Train| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
                       % (epoch_running_loss, acc,
@@ -85,6 +85,7 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
     epoch_running_loss = 0.0
     all_predictions = []
     all_ground_truth_labels = []
+    all_texts = []
     for i, batch in tqdm(enumerate(dataset)):
         X, y, _ = batch
         y = y.to(device)
@@ -101,7 +102,7 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
         # Calculate several batch statistics
         all_predictions.extend(outputs.detach().cpu().argmax(1).tolist())
         all_ground_truth_labels.extend(y.cpu().tolist())
-
+        all_texts.append(X)
     correct_list = [1 if a == b else 0 for a, b in zip(all_predictions, all_ground_truth_labels)]
     acc = sum(correct_list) / len(correct_list)
     prog_string = "[|Train| Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
@@ -111,4 +112,7 @@ def evaluation(model, dataset, criterion, include_lengths=True, device=None):
                      precision_score(all_ground_truth_labels, all_predictions, average="weighted"))
 
     print(prog_string)
+    return all_predictions, all_ground_truth_labels, all_texts
+
+
 

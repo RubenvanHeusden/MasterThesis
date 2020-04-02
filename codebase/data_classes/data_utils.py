@@ -6,6 +6,7 @@ from imblearn.over_sampling import RandomOverSampler
 from sklearn.model_selection import StratifiedShuffleSplit
 from codebase.data_classes.dailydialogdataset import DailyDialogDataset
 from codebase.data_classes.enrondataset import EnronDataset
+from codebase.data_classes.customdataset import CustomDataset
 import numpy as np
 
 
@@ -34,6 +35,11 @@ def single_task_dataset_prep(dataset_string):
         dataset = EnronDataset
         output_dim = 10
         target = ("emotion", )
+
+    elif dataset_string == "CUSTOM":
+        dataset = CustomDataset
+        output_dim = 18
+        target = ('label', )
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
                         "argument parser for details on valid arguments"))

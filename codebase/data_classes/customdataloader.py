@@ -38,7 +38,6 @@ class CustomDataLoader:
         for key, val in self.datasplits[0].fields.items():
             if key != "text" and key != 'id' and val:
                 val.build_vocab(self.datasplits[0])
-
         # Construct and iterator specifically for training
         train_iter = BucketIterator(
             self.datasplits[0],
