@@ -35,9 +35,9 @@ so that the directory tree looks like below:
 ```
 root
 |--- codebase
-|	 |----experiments
-|	 |	  |---- .vector_cache
-|    |    |         |---- glove.6B.300d.txt
+|       |----experiments
+|       |        |---- .vector_cache
+|       |        |          |---- glove.6B.300d.txt
 
 ```
 When the word embeddings are not found in this folder, they will be automatically downloaded 
@@ -61,17 +61,34 @@ arguments specified in the file to train and evaluate that specific model.
 For example, the below command trains an LSTM model on predicting the categories for the Enron dataset
 
 ```
-python train_lstm_mode.py --dataset ENRON-CAT --n_epochs 10 --fix_length 500 --tensorboard_dir runs/enron_categories_experiment1
+python train_lstm_model.py --dataset ENRON-CAT --n_epochs 10 --fix_length 500 --tensorboard_dir runs/enron_categories_experiment1
 ```
+### Selecting Datasets
 
-## Note on TensorBoard
+For the Multitask Classification experiments all tasks within the dataset are 
+automatically all selected and trained simultaneously. 
+
+Below are the (currently) available datasets and the different task for each dataset
+
+
+ENRON
+	- ENRON-CAT
+	- ENRON-EMOT
+
+DAILYDIALOG
+	- DAILYDIALOG-ACT
+	- DAILYDIALOG-EMOT
+	- DAILYDIALOG-TOPIC
+
+
+
+## Notes on using TensorBoard
 
 By default, all the training scripts automatically log several statistics about 
 the training process such as the average loss and accuracy per epoch, as well as 
 the structure of the model used. By default these statistics are recorded in a
 'runs' folder that is created at runtime. to view the statistics, start a terminal
-and navigate to  "XXX_task_classification/saved_models/MODEL_NAME". then run the  
-following command: 
+and navigate to  "XXX_task_classification/saved_models/MODEL_NAME". then run the following command: 
 
 ```
 tensorboard --logdir=runs 
