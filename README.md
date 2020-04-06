@@ -26,13 +26,16 @@ To run this package please follow the instructions below:
 	pip install -r requirements.txt
 ```
 ### Word Embeddings
-(fill in later)
 
 This project uses the 300D word embeddings from the Glove Project (). In case these
 are already present on your system, these can be placed on the .vector_cache folder,
 so that the directory tree looks like below: 
 ```
-
+root
+|--- codebase
+|	 |----experiments
+|	 |	  |---- .vector_cache
+|    |	  |		|---- glove.6B.300d.txt
 
 ```
 When the word embeddings are not found in this folder, they will be automatically downloaded 
