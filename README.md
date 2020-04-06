@@ -25,6 +25,8 @@ To run this package please follow the instructions below:
 ```
 	pip install -r requirements.txt
 ```
+
+
 ### Word Embeddings
 
 This project uses the 300D word embeddings from the Glove Project (). In case these
@@ -35,7 +37,7 @@ root
 |--- codebase
 |	 |----experiments
 |	 |	  |---- .vector_cache
-|    |	  |		|---- glove.6B.300d.txt
+|    |    |         |---- glove.6B.300d.txt
 
 ```
 When the word embeddings are not found in this folder, they will be automatically downloaded 
@@ -43,7 +45,8 @@ and placed in this folder.
 
 ### Datasets
 
-
+Both the Enron Dataset(link) and the DailyDialog Dataset(link) are available online.
+(add a script to download them automatically)
 
 ## Running experiments
 
@@ -51,12 +54,31 @@ The project contains two options for classification, namely single-task and mult
 classification. For the right format of the dataset for multi-task classification please
 refer to 'File Format for Multitask Classification'. 
 
+Both the single-task classification and the multi-task classification folders contain several
+scripts of the form "train_XXX_model.py", these can be called from the command line with the 
+arguments specified in the file to train and evaluate that specific model. 
 
-### File Format for Multitask Classification
+For example, the below command trains an LSTM model on predicting the categories for the Enron dataset
 
+```
+python train_lstm_mode.py --dataset ENRON-CAT --n_epochs 10 --fix_length 500 --tensorboard_dir runs/enron_categories_experiment1
+```
 
+## Note on TensorBoard
 
+By default, all the training scripts automatically log several statistics about 
+the training process such as the average loss and accuracy per epoch, as well as 
+the structure of the model used. By default these statistics are recorded in a
+'runs' folder that is created at runtime. to view the statistics, start a terminal
+and navigate to  "XXX_task_classification/saved_models/MODEL_NAME". then run the  
+following command: 
 
+```
+tensorboard --logdir=runs 
+```
 
+Now, the Tensorboard application will launch and the link to navigate to to view
+the statistics is shown.
 
+To disable the logging, use "--tensorboard_dir None" when running the training scripts
 
