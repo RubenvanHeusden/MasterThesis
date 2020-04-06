@@ -70,17 +70,21 @@ automatically all selected and trained simultaneously.
 
 Below are the (currently) available datasets and the different task for each dataset
 
-
+```
 ENRON
 	- ENRON-CAT
 	- ENRON-EMOT
+```
 
+
+```
 DAILYDIALOG
 	- DAILYDIALOG-ACT
 	- DAILYDIALOG-EMOT
 	- DAILYDIALOG-TOPIC
+```
 
-
+More details on the datasets can be found in the Thesis document.
 
 ## Notes on using TensorBoard
 
