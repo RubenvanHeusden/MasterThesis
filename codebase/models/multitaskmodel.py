@@ -21,7 +21,7 @@ class MultiTaskModel(nn.Module):
         self.include_lens = include_lens
         self.params = {"None": None}
 
-    def forward(self, x, tower):
+    def forward(self, x, tower="category"):
         x = self.shared_layer(x)
         x = self.tower_list[self.tower_dict[tower]](x)
         # TODO maybe add a softmax

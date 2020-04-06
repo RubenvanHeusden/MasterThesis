@@ -10,21 +10,21 @@ from torch.utils.tensorboard import SummaryWriter
 
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
 def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
-          save_path=None, save_name=None, use_tensorboard=False, checkpoint_interval=5,
+          save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5,
           include_lengths=True, clip_val=0):
     # Set the model in training mode just to be safe
 
     model.to(device)
     model.train()
 
-    # if tensorboard_dir:
-    #     writer = SummaryWriter(tensorboard_dir)
-    #     if include_lengths:
-    #         s = dataset.sample().cuda()
-    #         sample = s, torch.tensor([s.shape[0]]).cuda()
-    #     else:
-    #         sample = dataset.sample().cuda().unsqueeze(0)
-    #     writer.add_graph(model, [sample])
+    if tensorboard_dir:
+        writer = SummaryWriter(tensorboard_dir)
+        if include_lengths:
+            s = dataset.sample().cuda()
+            sample = s, torch.tensor([s.shape[0]]).cuda()
+        else:
+            sample = dataset.sample().cuda().unsqueeze(0)
+        writer.add_graph(model, [sample])
 
     for epoch in range(n_epochs):
         if save_path:
@@ -37,8 +37,10 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
         for i, batch in tqdm(enumerate(dataset)):
             optimizer.zero_grad()
             X, *targets, tasks = batch
-            for y in targets:
-                y = y.to(device)
+
+            for y in range(len(targets)):
+                targets[y] = targets[y].to(device)
+
             if isinstance(X, tuple):
                 X = list(X)
                 for z in range(len(X)):
@@ -51,17 +53,16 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
                 # see if we need to even this out
                 loss += criterion(outputs, targets[i])
             # training the network
+
             loss.backward()
             if clip_val:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
             optimizer.step()
-            quit()
-            all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
-            all_ground_truth_labels[task].extend(y.cpu().tolist())
-            epoch_running_loss[task] += loss.item()
-            # Calculating several batch statistics
-
-        scheduler.step()
+            for t in range(len(tasks)):
+                all_predictions[tasks[t]].extend(outputs.detach().cpu().argmax(1).tolist())
+                all_ground_truth_labels[tasks[t]].extend(targets[t].cpu().tolist())
+                epoch_running_loss[tasks[t]] += loss.item()
+        #scheduler.step()
         for task in all_predictions.keys():
             correct_list = [1 if a == b else 0 for a, b in zip(all_predictions[task], all_ground_truth_labels[task])]
             acc = sum(correct_list) / len(correct_list)
@@ -72,11 +73,14 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
                      precision_score(all_ground_truth_labels[task], all_predictions[task], average="micro"))
             with open("%s/results.txt" % save_path, "a") as f:
                 f.write(prog_string+"\n")
-        with open("%s/results.txt" % save_path, "a") as f:
-            f.write("\n")
+            if tensorboard_dir:
+                writer.add_scalar('loss_%s' % task, epoch_running_loss[task], epoch)
+                writer.add_scalar('accuracy_%s' % task, acc, epoch)
     print('Finished Training')
     torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
     #print(model.softmax(model.gating_network(inputs, lengths=lengths)).unsqueeze(1))
+    if tensorboard_dir:
+        writer.close()
     return model
 
 

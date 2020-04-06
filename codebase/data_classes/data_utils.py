@@ -38,7 +38,7 @@ def single_task_dataset_prep(dataset_string):
 
     elif dataset_string == "CUSTOM":
         dataset = CustomDataset
-        output_dim = 18
+        output_dim = 17
         target = ('label', )
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
