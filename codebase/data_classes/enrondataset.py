@@ -56,6 +56,7 @@ class EnronDataset:
                 dset_row.append((header, LabelField(dtype=torch.long)))
             else:
                 dset_row.append((header, None))
+
         train, test = TabularDataset.splits(
             path=self.path_to_datadir,  # the root directory where the data lies
             train='train.csv', test="test.csv",

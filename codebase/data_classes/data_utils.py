@@ -54,7 +54,7 @@ def multi_task_dataset_prep(dataset_string):
 
     elif dataset_string == "ENRON":
         dataset = EnronDataset
-        output_dim = [6, 20]
+        output_dim = [6, 10]
         targets = ("category", "emotion")
 
     else:

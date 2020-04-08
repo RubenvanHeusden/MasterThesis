@@ -20,9 +20,8 @@ def main(args):
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
-    TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True,
+    TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
-
     towers = {MLP(args.hidden_dim, args.linear_layers, output_dim): name for output_dim,
                                                                         name in zip(output_dimensions, target_names)}
     # Use name of dataset to get the arguments needed
@@ -38,6 +37,7 @@ def main(args):
     model = MultiTaskLSTM(vocab=TEXT.vocab.vectors,  hidden_dim=args.hidden_dim, device=args.device,
                             use_lengths=args.use_lengths)
 
+
     multitask_model = MultiTaskModel(shared_layer=model, towers=towers, batch_size=args.batch_size,
                                      input_dimension=args.embedding_dim, device=args.device,
                                      include_lens=args.use_lengths)
@@ -52,9 +52,8 @@ def main(args):
           clip_val=args.gradient_clip)
 
     print("Evaluating model")
-    multitask_model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(target_names),
+    multitask_model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
                                                                                               args.n_epochs-1)))
-
     evaluation(multitask_model, data_iterators[-1], criterion, device=args.device)
 
 
@@ -75,7 +74,6 @@ if __name__ == "__main__":
     parser.add_argument("--use_lengths", type=str, default="True")
     parser.add_argument("--do_lowercase", type=str, default="True")
     parser.add_argument("--fix_length", type=int, default=None)
-
 
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--embedding_dim", type=int, default=300)

@@ -1,5 +1,6 @@
 import argparse
 import torch
+from torchtext.data import Field
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
@@ -9,11 +10,12 @@ from codebase.experiments.multitask_classification.train_methods import *
 from codebase.models.simplelstm import SimpleLSTM
 from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
-from codebase.data_classes.data_utils import combine_datasets, multi_task_dataset_prep
+from codebase.data_classes.data_utils import multi_task_dataset_prep
+from codebase.data_classes.customdataloader import CustomDataLoader
 
 
 def main():
-
+    dataset_class, output_dimensions, target_names = multi_task_dataset_prep(args.dataset)
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
@@ -21,20 +23,29 @@ def main():
     torch.backends.cudnn.benchmark = False
     include_lens = args.use_lengths
 
-    output_dimensions, dataset_names, datasets = multi_task_dataset_prep(args.datasets)
-
+    #TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True,
+    #             fix_length=args.fix_length)
+    TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=args.use_lengths, batch_first=True,
+                 fix_length=args.fix_length)
     towers = {MLP(args.hidden_dim_experts, args.linear_layers, output_dim): name for output_dim,
-                                                                        name in zip(output_dimensions, dataset_names)}
-    total_vocab, train_iterators, test_iterators = combine_datasets(datasets, include_lens=args.use_lengths,
-                                                                    set_lowercase=args.do_lowercase,
-                                                                    batch_size=args.batch_size, task_names=dataset_names)
+                                                                        name in zip(output_dimensions, target_names)}
+
+    # Use name of dataset to get the arguments needed
+    print("--- Starting with reading in the %s dataset ---" % args.dataset)
+    dataset = dataset_class(text_field=TEXT).load(targets=target_names)
+    print("--- Finished with reading in the %s dataset ---" % args.dataset)
+    # Load the dataset and split it into train and test portions
+
+    dloader = CustomDataLoader(dataset, TEXT, target_names)
+    data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
+                                                 batch_size=args.batch_size, device=torch.device("cpu"))
 
     # initialize the multiple LSTMs and gating functions
-    gating_networks = [SimpleLSTM(total_vocab, args.hidden_dim_g, args.n_experts,
+    gating_networks = [SimpleLSTM(TEXT.vocab.vectors, args.hidden_dim_g, args.n_experts,
                                                            device=args.device, use_lengths=args.use_lengths) for _ in
-                                                range(len(dataset_names))]
+                                                range(len(target_names))]
 
-    shared_layers = [MultiTaskLSTM(total_vocab, args.hidden_dim_experts,
+    shared_layers = [MultiTaskLSTM(TEXT.vocab.vectors, args.hidden_dim_experts,
                                                          device=args.device,
                                                          use_lengths=args.use_lengths) for _ in range(args.n_experts)]
 
@@ -46,27 +57,24 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(model, criterion, optimizer, scheduler, list(train_iterators), device=args.device,
-          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(dataset_names),
-          use_tensorboard=True, n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
+    train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
+          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
+          tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
 
     print("Evaluating model")
-    model.load_state_dict(torch.load("saved_models/LSTM/%s_datasets_epoch_%d.pt" % ("_".join(dataset_names),
+    model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
                                                                                               args.n_epochs-1)))
-    for i, iterator in enumerate(test_iterators):
-        print("evaluating on dataset %s" % dataset_names[i])
-        evaluation(model, iterator, criterion, device=args.device)
+    evaluation(model, data_iterators[-1], criterion, device=args.device)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--datasets", help="""string specifying the dataset to be used
+    parser.add_argument("--dataset", help="""string specifying the dataset to be used
                                         "options are:
-                                        -   SST
-                                        -   YELP
-                                        -   IMDB
-                                        """, nargs='+', required=True)
+                                        -   DAILYDIALOG
+                                        -   ENRON
+                                        """, type=str, default="ENRON")
 
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--learning_rate", type=float, default=1)
@@ -85,6 +93,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_experts", type=int, default=3)
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--gradient_clip", type=float, default=0.0)
+    parser.add_argument("--fix_length", type=int, default=None)
+
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)

@@ -19,12 +19,12 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
 
     if tensorboard_dir:
         writer = SummaryWriter(tensorboard_dir)
-        if include_lengths:
-            s = dataset.sample().cuda()
-            sample = s, torch.tensor([s.shape[0]]).cuda()
-        else:
-            sample = dataset.sample().cuda().unsqueeze(0)
-        writer.add_graph(model, [sample])
+        # if include_lengths:
+        #     s = dataset.sample().cuda()
+        #     sample = s, torch.tensor([s.shape[0]]).cuda()
+        # else:
+        #     sample = dataset.sample().cuda().unsqueeze(0)
+        # writer.add_graph(model, [sample])
 
     for epoch in range(n_epochs):
         if save_path:
@@ -47,30 +47,33 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
                     X[z] = X[z].to(device)
             else:
                 X = X.to(device)
-            loss = 0
-            for i, task in enumerate(tasks):
-                outputs = model(X, task)
-                # see if we need to even this out
-                loss += criterion(outputs, targets[i])
-            # training the network
 
+            loss = 0
+            for p, task in enumerate(tasks):
+                outputs = model(X, task)
+                all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
+                # see if we need to even this out
+                loss += criterion(outputs, targets[p])
+
+            # training the network
             loss.backward()
             if clip_val:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
             optimizer.step()
             for t in range(len(tasks)):
-                all_predictions[tasks[t]].extend(outputs.detach().cpu().argmax(1).tolist())
                 all_ground_truth_labels[tasks[t]].extend(targets[t].cpu().tolist())
                 epoch_running_loss[tasks[t]] += loss.item()
-        #scheduler.step()
+        scheduler.step()
         for task in all_predictions.keys():
             correct_list = [1 if a == b else 0 for a, b in zip(all_predictions[task], all_ground_truth_labels[task])]
+            print("Task %s" % task)
+            print(sum([1 for item in all_predictions[task] if item != 0]))
             acc = sum(correct_list) / len(correct_list)
             prog_string = "[|Train| Task: %s Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
                           % (task, epoch_running_loss[task], acc,
-                     f1_score(all_ground_truth_labels[task], all_predictions[task], average="micro"),
-                     recall_score(all_ground_truth_labels[task], all_predictions[task], average="micro"),
-                     precision_score(all_ground_truth_labels[task], all_predictions[task], average="micro"))
+                     f1_score(all_ground_truth_labels[task], all_predictions[task], average="weighted"),
+                     recall_score(all_ground_truth_labels[task], all_predictions[task], average="weighted"),
+                     precision_score(all_ground_truth_labels[task], all_predictions[task], average="weighted"))
             with open("%s/results.txt" % save_path, "a") as f:
                 f.write(prog_string+"\n")
             if tensorboard_dir:
@@ -84,37 +87,42 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
     return model
 
 
-def evaluation(model, dataset, criterion, device=None):
+def evaluation(model, dataset, criterion=None, device=None):
     model.to(device)
     # Set the model to evaluation mode, important because of the Dropout Layers
     model = model.eval()
     # Calculate several test statistics
-    epoch_running_loss = defaultdict(float)
     all_predictions = defaultdict(list)
     all_ground_truth_labels = defaultdict(list)
-    for i, batch in enumerate(dataset):
-        X, y, task = batch
-        y = y.to(device)
+    # Calculate several training statistics
+    for i, batch in tqdm(enumerate(dataset)):
+        X, *targets, tasks = batch
+
+        for y in range(len(targets)):
+            targets[y] = targets[y].to(device)
+
         if isinstance(X, tuple):
             X = list(X)
             for z in range(len(X)):
                 X[z] = X[z].to(device)
         else:
             X = X.to(device)
-        outputs = model(X, task)
 
-        loss = criterion(outputs, y)
-        epoch_running_loss[task] += loss.item()
-        all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
-        all_ground_truth_labels[task].extend(y.cpu().tolist())
-       # Calculate several batch statistics
+        for i, task in enumerate(tasks):
+            outputs = model(X, task)
+            # see if we need to even this out
+            # training the network
+            all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
+
+        for t in range(len(tasks)):
+            all_ground_truth_labels[tasks[t]].extend(targets[t].cpu().tolist())
+
     for task in all_predictions.keys():
         correct_list = [1 if a == b else 0 for a, b in zip(all_predictions[task], all_ground_truth_labels[task])]
         acc = sum(correct_list) / len(correct_list)
-        prog_string = "[|Train| Task: %s Loss: %.3f, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
-                      % (task, epoch_running_loss[task], acc,
-                 f1_score(all_ground_truth_labels[task], all_predictions[task], average="micro"),
-                 recall_score(all_ground_truth_labels[task], all_predictions[task], average="micro"),
-                 precision_score(all_ground_truth_labels[task], all_predictions[task], average="micro"))
+        prog_string = "[|Train| Task: %s, Acc: %.3f, f_1: %.3f, recall: %.3f, precision, %.3f]" \
+                      % (task, acc,
+                 f1_score(all_ground_truth_labels[task], all_predictions[task], average="weighted"),
+                 recall_score(all_ground_truth_labels[task], all_predictions[task], average="weighted"),
+                 precision_score(all_ground_truth_labels[task], all_predictions[task], average="weighted"))
         print(prog_string)
-

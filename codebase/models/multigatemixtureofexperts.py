@@ -31,6 +31,7 @@ class MultiGateMixtureofExperts(nn.Module):
 
         self.gating_networks = nn.ModuleList(gating_networks)
         self.shared_layers = nn.ModuleList(shared_layers)
+
         self.towers = nn.ModuleList(towers.keys())
         self.tower_dict = {name: x for name, x in zip(towers.values(), range(len(towers)))}
         self.batch_size = batch_size
@@ -40,7 +41,7 @@ class MultiGateMixtureofExperts(nn.Module):
         # Check dimensions here!
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, x, tower):
+    def forward(self, x, tower="category"):
         """
         @param x: if include_lens is False, this is a matrix of size [batch_size, max_sent_length]
         containing indices into the vocabulary matrix. If include_lens is True, x should be a tuple
@@ -54,6 +55,8 @@ class MultiGateMixtureofExperts(nn.Module):
         # Depending on the task we select the appropriate gating network and
         # Task specific tower and compute the activations for that batch
         expert_weights = self.softmax(self.gating_networks[self.tower_dict[tower]](x)).unsqueeze(1)
+        print((expert_weights.argmax(2) != 0).sum())
+
         x = torch.stack([net(x) for net in self.shared_layers], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
         x = self.towers[self.tower_dict[tower]](x)
