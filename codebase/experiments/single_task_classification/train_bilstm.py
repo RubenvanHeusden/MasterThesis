@@ -39,6 +39,7 @@ def main(args):
                   device=args.device, use_lengths=args.use_lengths, dropout=args.dropout)
 
     if args.class_weighting:
+        print("Using class weighting")
         total_examples = 0
         class_totals = torch.zeros((num_classes, 1))
         for X, y, _ in data_iterators[0]:
@@ -46,9 +47,12 @@ def main(args):
                 class_totals[i] += 1
                 total_examples += 1
         total_examples = torch.tensor([total_examples for _ in range(num_classes)]).squeeze()
-        weights = torch.div(total_examples, class_totals.squeeze())
 
-        criterion = nn.CrossEntropyLoss(weight=weights.cuda())
+        weights = torch.div(class_totals.squeeze(), total_examples)
+        weights_inversed = torch.ones_like(weights) - weights
+
+        criterion = nn.CrossEntropyLoss(weight=weights_inversed.to(args.device))
+
     else:
         criterion = nn.CrossEntropyLoss()
 

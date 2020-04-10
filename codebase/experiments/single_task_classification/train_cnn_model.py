@@ -38,17 +38,23 @@ def main(args):
                     embed_matrix=TEXT.vocab.vectors, num_filters=args.num_filters, dropbout_probs=args.dropout)
 
     if args.class_weighting:
+        print("Using class weighting")
         total_examples = 0
         class_totals = torch.zeros((num_classes, 1))
         for X, y, _ in data_iterators[0]:
             for i in y:
                 class_totals[i] += 1
                 total_examples += 1
-        total_examples = torch.tensor([1 for _ in range(num_classes)]).squeeze()
-        weights = torch.div(total_examples, class_totals.squeeze())
-        criterion = nn.CrossEntropyLoss(weight=weights.to(args.device))
+        total_examples = torch.tensor([total_examples for _ in range(num_classes)]).squeeze()
+
+        weights = torch.div(class_totals.squeeze(), total_examples)
+        weights_inversed = torch.ones_like(weights) - weights
+
+        criterion = nn.CrossEntropyLoss(weight=weights_inversed.to(args.device))
+
     else:
         criterion = nn.CrossEntropyLoss(reduction="sum")
+
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
