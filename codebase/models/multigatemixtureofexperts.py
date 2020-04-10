@@ -55,10 +55,8 @@ class MultiGateMixtureofExperts(nn.Module):
         # Depending on the task we select the appropriate gating network and
         # Task specific tower and compute the activations for that batch
         expert_weights = self.softmax(self.gating_networks[self.tower_dict[tower]](x)).unsqueeze(1)
-        print((expert_weights.argmax(2) != 0).sum())
 
         x = torch.stack([net(x) for net in self.shared_layers], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
         x = self.towers[self.tower_dict[tower]](x)
         return x.squeeze()
-        # return x.squeeze(), expert_weights

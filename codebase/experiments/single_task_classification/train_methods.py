@@ -12,12 +12,12 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
     model.train()
     if tensorboard_dir:
         writer = SummaryWriter(tensorboard_dir)
-        if include_lengths:
-            s = dataset.sample().cuda()
-            sample = s, torch.tensor([s.shape[0]]).cuda()
-        else:
-            sample = dataset.sample().cuda().unsqueeze(0)
-        writer.add_graph(model, [sample])
+        # if include_lengths:
+        #     s = dataset.sample().cuda()
+        #     sample = s, torch.tensor([s.shape[0]]).cuda()
+        # else:
+        #     sample = dataset.sample().cuda().unsqueeze(0)
+        # writer.add_graph(model, [sample])
 
     for epoch in range(n_epochs):
         if save_path:
@@ -54,7 +54,7 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             all_ground_truth_labels.extend(y.cpu().tolist())
             epoch_running_loss += loss.item()
 
-        scheduler.step()
+        #scheduler.step()
         correct_list = [1 if a == b else 0 for a, b in zip(all_predictions, all_ground_truth_labels)]
         print(sum([1 for item in all_predictions if item != 0]))
         acc = sum(correct_list) / len(correct_list)

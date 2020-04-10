@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from positionalencoder import PositionalEncoder
+from codebase.models.positionalencoder import PositionalEncoder
 
 # See if I can update PyTorch so it doesn't get angry about not finding Transformers
 
@@ -67,7 +67,6 @@ class TransformerModel(nn.Module):
         self.transformer = nn.TransformerEncoder(self._transform_encoder_layer, num_layers=num_transformer_layers)
         self.dropout = nn.Dropout(p=classification_dropout)
         self.final_fc = nn.Linear(word_embedding_matrix.shape[1], num_outputs)
-        self.logsoftmax = nn.LogSoftmax()
 
     def forward(self, x):
         pad_mask = torch.zeros_like(x)

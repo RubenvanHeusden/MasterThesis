@@ -17,7 +17,6 @@ class PositionalEncoder(nn.Module):
         is False.
         """
         super(PositionalEncoder, self).__init__()
-
         positional_encodings = torch.zeros(max_seq_len, embedding_dim)
         positions = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
         encoding_multiplier = torch.exp(torch.arange(0, embedding_dim, 2).float() * (-math.log(10000.0) / embedding_dim))
