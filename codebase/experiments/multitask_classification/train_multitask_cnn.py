@@ -8,7 +8,7 @@ from codebase.models.multitaskmodel import MultiTaskModel
 from codebase.models.multitaskconvnet import MultitaskConvNet
 from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.models.mlp import MLP
-from codebase.data_classes.data_utils import multi_task_dataset_prep
+from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_class_weighting
 import argparse
 
 
@@ -48,11 +48,16 @@ def main(args):
                                      input_dimension=TEXT.vocab.vectors.shape[1], device=args.device,
                                      include_lens=args.use_lengths)
 
-    criterion = nn.CrossEntropyLoss()
+    if args.class_weighting:
+        task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
+        losses = {name: nn.CrossEntropyLoss(weight=task_weights[name].to(args.device)) for name in target_names}
+    else:
+        losses = {name: nn.CrossEntropyLoss() for name in target_names}
+
     optimizer = optim.SGD(multitask_model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(multitask_model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
+    train(multitask_model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
           include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
@@ -60,7 +65,7 @@ def main(args):
     print("Evaluating model")
     multitask_model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
                                                                                               args.n_epochs-1)))
-    evaluation(multitask_model, data_iterators[-1], criterion, device=args.device)
+    evaluation(multitask_model, data_iterators[-1], losses, device=args.device)
 
 
 if __name__ == "__main__":
@@ -76,20 +81,24 @@ if __name__ == "__main__":
     parser.add_argument("--scheduler_stepsize", type=float, default=0.1)
     parser.add_argument("--scheduler_gamma", type=float, default=0.1)
     parser.add_argument("--random_seed", type=int, default=42)
-    parser.add_argument("--use_lengths", type=str, default="False")
-    parser.add_argument("--do_lowercase", type=str, default="True")
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
-    parser.add_argument("--embedding_dim", type=int, default=300)
-    parser.add_argument("--hidden_dim", type=int, default=64)
     parser.add_argument("--n_epochs", type=int, default=25)
-    parser.add_argument("--num_filters", type=int, default=100)
-    parser.add_argument("--filter_list", nargs='+', required=True)
-    parser.add_argument("--linear_layers", nargs='+', required=True)
     parser.add_argument("--logdir", type=str, default="saved_models/CNN")
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--gradient_clip", type=float, default=0.0)
-    parser.add_argument("--dropout", type=float, default=0.3)
+
+    parser.add_argument("--use_lengths", type=str, default="False")
+    parser.add_argument("--do_lowercase", type=str, default="True")
+    parser.add_argument("--class_weighting", type=str, default="False")
     parser.add_argument("--fix_length", type=int, default=None)
+    parser.add_argument("--dropout", type=float, default=0.3)
+
+    parser.add_argument("--embedding_dim", type=int, default=300)
+    parser.add_argument("--hidden_dim", type=int, default=64)
+    parser.add_argument("--num_filters", type=int, default=100)
+    parser.add_argument("--filter_list", nargs='+', required=True)
+    parser.add_argument("--linear_layers", nargs='+', required=True)
+
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)

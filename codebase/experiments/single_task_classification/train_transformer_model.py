@@ -7,7 +7,7 @@ from torch.optim.lr_scheduler import StepLR
 from torchtext.data import Field
 
 # Local imports
-from codebase.data_classes.data_utils import single_task_dataset_prep
+from codebase.data_classes.data_utils import single_task_dataset_prep, single_task_class_weighting
 from codebase.experiments.single_task_classification.train_methods import *
 from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.models.transformermodel import TransformerModel
@@ -38,7 +38,6 @@ def main(args):
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
 
-    # INSERT TRANSFORMER MODEL HERE
     model = TransformerModel(max_seq_len=args.fix_length,
                              num_outputs=num_classes,
                              word_embedding_matrix=TEXT.vocab.vectors,
@@ -51,16 +50,8 @@ def main(args):
                              pad_index=TEXT.vocab.stoi['pad'])
 
     if args.class_weighting:
-        total_examples = 0
-        class_totals = torch.zeros((num_classes, 1))
-        for X, y, _ in data_iterators[0]:
-            for i in y:
-                class_totals[i] += 1
-                total_examples += 1
-        total_examples = torch.tensor([total_examples for _ in range(num_classes)]).squeeze()
-        weights = torch.div(total_examples, class_totals.squeeze())
-
-        criterion = nn.CrossEntropyLoss(weight=weights.cuda())
+        weights = single_task_class_weighting(data_iterators[0], num_classes)
+        criterion = nn.CrossEntropyLoss(weight=weights.to(args.device))
     else:
         criterion = nn.CrossEntropyLoss()
 

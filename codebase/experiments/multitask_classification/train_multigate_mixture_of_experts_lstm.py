@@ -10,7 +10,7 @@ from codebase.experiments.multitask_classification.train_methods import *
 from codebase.models.simplelstm import SimpleLSTM
 from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
-from codebase.data_classes.data_utils import multi_task_dataset_prep
+from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_class_weighting
 from codebase.data_classes.customdataloader import CustomDataLoader
 
 
@@ -53,11 +53,15 @@ def main():
                                       towers=towers, device=args.device, include_lens=args.use_lengths,
                                       batch_size=args.batch_size)
 
-    criterion = nn.CrossEntropyLoss()
+    if args.class_weighting:
+        task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
+        losses = {name: nn.CrossEntropyLoss(weight=task_weights[name].to(args.device)) for name in target_names}
+    else:
+        losses = {name: nn.CrossEntropyLoss() for name in target_names}
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
+    train(model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
           include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
@@ -65,7 +69,7 @@ def main():
     print("Evaluating model")
     model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
                                                                                               args.n_epochs-1)))
-    evaluation(model, data_iterators[-1], criterion, device=args.device)
+    evaluation(model, data_iterators[-1], losses, device=args.device)
 
 
 if __name__ == "__main__":
@@ -94,6 +98,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--gradient_clip", type=float, default=0.0)
     parser.add_argument("--fix_length", type=int, default=None)
+    parser.add_argument("--class_weighting", type=str, default="False")
 
     args = parser.parse_args()
 

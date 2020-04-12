@@ -73,3 +73,31 @@ def oversampler(train, test, target, text_label, field_label):
     for text, label in zip(resampled_X, resampled_Y):
         print(text, label)
 
+
+def single_task_class_weighting(dataset, num_classes):
+    class_totals = torch.zeros((num_classes, 1))
+    for X, y, _ in dataset:
+        for i in y:
+            class_totals[i] += 1
+
+    weights = 1 - (class_totals / class_totals.sum())
+    return weights
+
+
+def multitask_class_weighting(dataset, target_names, num_classes):
+
+    task_weights = {}
+    task_totals = {task: torch.zeros((n_classes, 1)) for task,
+                                                         n_classes in zip(target_names, num_classes)}
+
+    for X, *targets, tasks in dataset:
+        for task, task_name in zip(targets, tasks):
+            for class_id in task:
+                task_totals[task_name][class_id] += 1
+
+    for name in target_names:
+        total_examples = task_totals[name].sum()
+        weights = 1-(task_totals[name] / total_examples)
+        task_weights[name] = weights
+
+    return task_weights

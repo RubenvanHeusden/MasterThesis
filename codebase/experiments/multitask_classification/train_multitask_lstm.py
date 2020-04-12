@@ -7,10 +7,9 @@ from codebase.experiments.multitask_classification.train_methods import *
 from codebase.models.multitaskmodel import MultiTaskModel
 from codebase.models.multitasklstm import MultiTaskLSTM
 from codebase.models.mlp import MLP
-from codebase.data_classes.data_utils import multi_task_dataset_prep
+from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_class_weighting
 import argparse
 from codebase.data_classes.customdataloader import CustomDataLoader
-
 
 def main(args):
     dataset_class, output_dimensions, target_names = multi_task_dataset_prep(args.dataset)
@@ -37,16 +36,20 @@ def main(args):
     model = MultiTaskLSTM(vocab=TEXT.vocab.vectors,  hidden_dim=args.hidden_dim, device=args.device,
                             use_lengths=args.use_lengths)
 
-
     multitask_model = MultiTaskModel(shared_layer=model, towers=towers, batch_size=args.batch_size,
                                      input_dimension=args.embedding_dim, device=args.device,
                                      include_lens=args.use_lengths)
 
-    criterion = nn.CrossEntropyLoss()
+    if args.class_weighting:
+        task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
+        losses = {name: nn.CrossEntropyLoss(weight=task_weights[name].to(args.device)) for name in target_names}
+    else:
+        losses = {name: nn.CrossEntropyLoss() for name in target_names}
+
     optimizer = optim.SGD(multitask_model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(multitask_model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
+    train(multitask_model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
           include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
@@ -54,7 +57,7 @@ def main(args):
     print("Evaluating model")
     multitask_model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
                                                                                               args.n_epochs-1)))
-    evaluation(multitask_model, data_iterators[-1], criterion, device=args.device)
+    evaluation(multitask_model, data_iterators[-1], losses, device=args.device)
 
 
 if __name__ == "__main__":
@@ -74,6 +77,7 @@ if __name__ == "__main__":
     parser.add_argument("--use_lengths", type=str, default="True")
     parser.add_argument("--do_lowercase", type=str, default="True")
     parser.add_argument("--fix_length", type=int, default=None)
+    parser.add_argument("--class_weighting", type=str, default="False")
 
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--embedding_dim", type=int, default=300)

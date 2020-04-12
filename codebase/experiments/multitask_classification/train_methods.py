@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
-def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
+def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
           save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5,
           include_lengths=True, clip_val=0):
     # Set the model in training mode just to be safe
@@ -27,9 +27,11 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
         # writer.add_graph(model, [sample])
 
     for epoch in range(n_epochs):
+
         if save_path:
             if epoch % checkpoint_interval == 0:
                 torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
+
         all_predictions = defaultdict(list)
         all_ground_truth_labels = defaultdict(list)
         epoch_running_loss = defaultdict(float)
@@ -53,7 +55,7 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
                 outputs = model(X, task)
                 all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
                 # see if we need to even this out
-                loss += criterion(outputs, targets[p])
+                loss += criterion_dict[task](outputs, targets[p])
 
             # training the network
             loss.backward()
