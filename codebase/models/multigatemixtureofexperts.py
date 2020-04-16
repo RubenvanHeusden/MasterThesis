@@ -7,7 +7,7 @@ from typing import List, Any, Dict
 
 class MultiGateMixtureofExperts(nn.Module):
     def __init__(self, shared_layers: List[Any], gating_networks: List[Any], towers: Dict[Any, Any], device,
-                 include_lens: bool, batch_size: int):
+                 include_lens: bool, batch_size: int, return_weights: bool = True):
         """
 
         @param shared_layers: a list of nn.Modules through which the input is fed
@@ -40,6 +40,7 @@ class MultiGateMixtureofExperts(nn.Module):
         self.params = {"None": None}
         # Check dimensions here!
         self.softmax = nn.Softmax(dim=1)
+        self.return_weights = return_weights
 
     def forward(self, x, tower="category"):
         """
@@ -59,4 +60,6 @@ class MultiGateMixtureofExperts(nn.Module):
         x = torch.stack([net(x) for net in self.shared_layers], dim=0).permute(1, 0, 2)
         x = torch.bmm(expert_weights, x)
         x = self.towers[self.tower_dict[tower]](x)
+        if self.return_weights:
+            return x.squeeze(), expert_weights
         return x.squeeze()

@@ -1,11 +1,16 @@
 import torch
 import shutil
+import io
 from tqdm import tqdm
 from sklearn.metrics import f1_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import precision_score
 from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import tensorflow as tf
 
 
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
@@ -31,7 +36,7 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
         if save_path:
             if epoch % checkpoint_interval == 0:
                 torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
-
+        epoch_weights = defaultdict(list)
         all_predictions = defaultdict(list)
         all_ground_truth_labels = defaultdict(list)
         epoch_running_loss = defaultdict(float)
@@ -52,8 +57,12 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
 
             loss = 0
             for p, task in enumerate(tasks):
-                outputs = model(X, task)
+                if model.return_weights:
+                    outputs, weights = model(X, task)
+                else:
+                    outputs = model(X, task)
                 all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
+                epoch_weights[task].append(weights.detach().cpu())
                 # see if we need to even this out
                 loss += criterion_dict[task](outputs, targets[p])
 
@@ -81,6 +90,28 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
             if tensorboard_dir:
                 writer.add_scalar('loss_%s' % task, epoch_running_loss[task], epoch)
                 writer.add_scalar('accuracy_%s' % task, acc, epoch)
+                epoch_weights[task] = torch.cat(epoch_weights[task], dim=0)
+
+                task_mean = epoch_weights[task].mean(0).tolist()[0]
+
+                expert_weights = epoch_weights[task].squeeze().numpy()
+                task_classes_df = pd.DataFrame(expert_weights,
+                             columns=range(expert_weights.shape[1]))
+                task_classes_df['class'] = all_ground_truth_labels[task]
+
+                figure = plt.figure()
+                ax = figure.add_subplot(111)
+                task_classes_df.groupby('class').mean().plot(kind='bar', ax=ax)
+                writer.add_figure("weight distribution classes for Task %s" % task,
+                                  figure, epoch)
+
+                fig2 = plt.figure()
+                ax2 = fig2.add_subplot(111)
+
+                y_pos = np.arange(len(task_mean))
+                ax2.bar(y_pos, task_mean)
+                writer.add_figure("Average distribution of experts %s" % task,
+                                  fig2, epoch)
     print('Finished Training')
     torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
     #print(model.softmax(model.gating_network(inputs, lengths=lengths)).unsqueeze(1))
@@ -94,6 +125,7 @@ def evaluation(model, dataset, criterion=None, device=None):
     # Set the model to evaluation mode, important because of the Dropout Layers
     model = model.eval()
     # Calculate several test statistics
+    epoch_weights = defaultdict(list)
     all_predictions = defaultdict(list)
     all_ground_truth_labels = defaultdict(list)
     # Calculate several training statistics
@@ -111,11 +143,12 @@ def evaluation(model, dataset, criterion=None, device=None):
             X = X.to(device)
 
         for i, task in enumerate(tasks):
-            outputs = model(X, task)
-            # see if we need to even this out
-            # training the network
+            if model.return_weights:
+                outputs, weights = model(X, task)
+            else:
+                outputs = model(X, task)
             all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
-
+            epoch_weights[task].append(weights)
         for t in range(len(tasks)):
             all_ground_truth_labels[tasks[t]].extend(targets[t].cpu().tolist())
 

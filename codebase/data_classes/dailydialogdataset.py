@@ -20,8 +20,6 @@ def stratified_sampler(train, test, target, text_field, label_field):
         X.append(getattr(example, "text"))
         y.append(getattr(example, target[0]))
 
-    print(fields)
-    quit()
     train_idx, test_idx = list(shuffler.split(X, y))[0]
     trn = Dataset(examples=[Example.fromlist([X[i], y[i]], fields) for i in train_idx], fields=fields)
     tst = Dataset(examples=[Example.fromlist([X[i], y[i]], fields) for i in test_idx], fields=fields)
@@ -55,7 +53,7 @@ class DailyDialogDataset:
 
         train, test = TabularDataset.splits(
             path=self.path_to_datadir,  # the root directory where the data lies
-            train='train.csv', validation="val.csv",
+            train='train.csv', validation="test.csv",
             format='csv',
             skip_header=True,
             # if your csv has a header, make sure to pass this to ensure it doesn't get proceesed as data!

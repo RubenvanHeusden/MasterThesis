@@ -8,6 +8,7 @@ from codebase.data_classes.dailydialogdataset import DailyDialogDataset
 from codebase.data_classes.enrondataset import EnronDataset
 from codebase.data_classes.customdataset import CustomDataset
 import numpy as np
+from sklearn.utils.class_weight import compute_class_weight
 
 
 def single_task_dataset_prep(dataset_string):
@@ -50,7 +51,7 @@ def multi_task_dataset_prep(dataset_string):
     if dataset_string == "DAILYDIALOG":
         dataset = DailyDialogDataset
         output_dim = [7, 4, 10]
-        targets = ("emotion", "act", "category")
+        targets = ("emotion", "act", "topic")
 
     elif dataset_string == "ENRON":
         dataset = EnronDataset
@@ -75,29 +76,30 @@ def oversampler(train, test, target, text_label, field_label):
 
 
 def single_task_class_weighting(dataset, num_classes):
-    class_totals = torch.zeros((num_classes, 1))
+    total_y = []
     for X, y, _ in dataset:
-        for i in y:
-            class_totals[i] += 1
+        total_y.append(y)
 
-    weights = 1 - (class_totals / class_totals.sum())
-    return weights
+    total_y = torch.cat(total_y, dim=0)
+    classes = torch.unique(total_y)
+    weights = compute_class_weight('balanced', classes=classes.data.numpy(),
+                                   y=total_y.data.numpy())
+    return torch.from_numpy(weights).float()
 
 
 def multitask_class_weighting(dataset, target_names, num_classes):
 
     task_weights = {}
-    task_totals = {task: torch.zeros((n_classes, 1)) for task,
-                                                         n_classes in zip(target_names, num_classes)}
+    task_totals = {task: [] for task in target_names}
 
     for X, *targets, tasks in dataset:
         for task, task_name in zip(targets, tasks):
-            for class_id in task:
-                task_totals[task_name][class_id] += 1
-
+            task_totals[task_name].append(task)
     for name in target_names:
-        total_examples = task_totals[name].sum()
-        weights = 1-(task_totals[name] / total_examples)
-        task_weights[name] = weights
+        task_y = torch.cat(task_totals[name], dim=0)
+        unique_task = torch.unique(task_y)
+        task_weights[name] = torch.from_numpy(compute_class_weight('balanced', classes=unique_task.data.numpy(),
+                                                  y=task_y.data.numpy())).float()
+
 
     return task_weights
