@@ -24,7 +24,13 @@ class CustomDataset:
         # make the fields based on this, will take
         # will take a bit more time but is easier in the
         # end
-        dset_row = [("id", None), ("text", self.text_field), ("label", LabelField(dtype=torch.long))]
+        dset_row = [("id", None), ("text", self.text_field)]
+        field_headers = list(pd.read_csv(self.path_to_datadir+"/train.csv", quotechar="|"))[2:]
+        for header in field_headers:
+            if header in targets:
+                dset_row.append((header, LabelField(dtype=torch.long)))
+            else:
+                dset_row.append((header, None))
 
         train, test = TabularDataset.splits(
             path=self.path_to_datadir,

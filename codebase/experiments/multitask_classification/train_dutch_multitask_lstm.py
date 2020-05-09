@@ -11,7 +11,6 @@ from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_
 import argparse
 from codebase.data_classes.customdataloader import CustomDataLoader
 
-
 def main(args):
     dataset_class, output_dimensions, target_names = multi_task_dataset_prep(args.dataset)
     torch.cuda.empty_cache()
@@ -33,6 +32,9 @@ def main(args):
     dloader = CustomDataLoader(dataset, TEXT, target_names)
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
+
+    words, embed_dict, embeddings, embed_dim = torch.load("../vector_cache/nl_300/cc.nl.300.vec.pt")
+    TEXT.vocab.set_vectors(embed_dict, embeddings, embed_dim)
 
     model = MultiTaskLSTM(vocab=TEXT.vocab.vectors,  hidden_dim=args.hidden_dim, device=args.device,
                             use_lengths=args.use_lengths)
@@ -73,23 +75,21 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=1)
     parser.add_argument("--scheduler_stepsize", type=float, default=0.1)
     parser.add_argument("--scheduler_gamma", type=float, default=0.1)
-    parser.add_argument("--gradient_clip", type=float, default=0.0)
-
     parser.add_argument("--random_seed", type=int, default=42)
-    parser.add_argument("--n_epochs", type=int, default=25)
 
     parser.add_argument("--use_lengths", type=str, default="True")
     parser.add_argument("--do_lowercase", type=str, default="True")
     parser.add_argument("--fix_length", type=int, default=None)
     parser.add_argument("--class_weighting", type=str, default="False")
 
-    parser.add_argument("--hidden_dim", type=int, default=256)
-    parser.add_argument("--embedding_dim", type=int, default=300)
-    parser.add_argument("--linear_layers", nargs='+', required=True)
-
-    parser.add_argument("--save_interval", type=int, default=5)
-    parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+    parser.add_argument("--embedding_dim", type=int, default=300)
+    parser.add_argument("--hidden_dim", type=int, default=256)
+    parser.add_argument("--n_epochs", type=int, default=25)
+    parser.add_argument("--linear_layers", nargs='+', required=True)
+    parser.add_argument("--logdir", type=str, default="saved_models/LSTM")
+    parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument("--gradient_clip", type=float, default=0.0)
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)

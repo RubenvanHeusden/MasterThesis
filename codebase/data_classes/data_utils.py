@@ -37,10 +37,21 @@ def single_task_dataset_prep(dataset_string):
         output_dim = 10
         target = ("emotion", )
 
-    elif dataset_string == "CUSTOM":
+    elif dataset_string == "CUSTOM-CAT":
         dataset = CustomDataset
-        output_dim = 17
+        output_dim = 18
         target = ('label', )
+
+    elif dataset_string == "CUSTOM-EMOT":
+        dataset = CustomDataset
+        output_dim = 8
+        target = ("emotion_classes", )
+
+    elif dataset_string == "CUSTOM-INTENT":
+        dataset = CustomDataset
+        output_dim = 5
+        target = ("intent_classes", )
+
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
                         "argument parser for details on valid arguments"))
@@ -57,6 +68,11 @@ def multi_task_dataset_prep(dataset_string):
         dataset = EnronDataset
         output_dim = [6, 10]
         targets = ("category", "emotion")
+
+    elif dataset_string == "CUSTOM":
+        dataset = CustomDataset
+        output_dim = [18, 5, 8]
+        targets = ("label", "intent_classes", "emotion_classes")
 
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
@@ -100,6 +116,5 @@ def multitask_class_weighting(dataset, target_names, num_classes):
         unique_task = torch.unique(task_y)
         task_weights[name] = torch.from_numpy(compute_class_weight('balanced', classes=unique_task.data.numpy(),
                                                   y=task_y.data.numpy())).float()
-
 
     return task_weights

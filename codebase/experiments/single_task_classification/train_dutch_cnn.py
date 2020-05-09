@@ -8,7 +8,7 @@ from torchtext.data import Field, LabelField
 
 # Local Imports
 from codebase.models.convnet import ConvNet
-from codebase.data_classes.data_utils import single_task_dataset_prep
+from codebase.data_classes.data_utils import single_task_dataset_prep, single_task_class_weighting
 from codebase.experiments.single_task_classification.train_methods import *
 from codebase.data_classes.customdataloader import CustomDataLoader
 
@@ -18,9 +18,11 @@ def main(args):
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
+
     # Lines below are make sure cuda is (almost) deterministic, can slow down training
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
+
     TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
     # TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True)
@@ -40,33 +42,26 @@ def main(args):
                     embed_matrix=TEXT.vocab.vectors, num_filters=args.num_filters, dropbout_probs=args.dropout)
 
     if args.class_weighting:
-        total_examples = 0
-        class_totals = torch.zeros((num_classes, 1))
-        for X, y, _ in data_iterators[0]:
-            for i in y:
-                class_totals[i] += 1
-                total_examples += 1
-        total_examples = torch.tensor([1 for _ in range(num_classes)]).squeeze()
-        weights = torch.div(total_examples, class_totals.squeeze())
+        weights = single_task_class_weighting(data_iterators[0], num_classes)
         criterion = nn.CrossEntropyLoss(weight=weights.to(args.device))
     else:
         criterion = nn.CrossEntropyLoss(reduction="sum")
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=1e-5)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    # train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device, include_lengths=args.use_lengths,
-    #     save_path=args.logdir, save_name="%s_dataset" % args.dataset, tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs,
-    #     checkpoint_interval=args.save_interval, clip_val=args.gradient_clip)
+    train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device, include_lengths=args.use_lengths,
+        save_path=args.logdir, save_name="%s_dataset" % args.dataset, tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs,
+        checkpoint_interval=args.save_interval, clip_val=args.gradient_clip)
 
-    reversed_class_dict = {val: key for key, val in dataset[0].fields['label'].vocab.stoi.items()}
-    print(reversed_class_dict)
+    #reversed_class_dict = {val: key for key, val in dataset[0].fields['label'].vocab.stoi.items()}
+    #print(reversed_class_dict)
     print("Evaluating model")
     #model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_%d.pt" % (args.dataset, args.n_epochs-1)))
     model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_10.pt" % args.dataset))
     predictions, gold_labels = evaluation(model, data_iterators[-1], criterion, device=args.device, include_lengths=args.use_lengths)
-    eval_dataframe = pd.DataFrame({"predictions": [reversed_class_dict[k] for k in predictions],
-                                   "gold_labels": [reversed_class_dict[j] for j in gold_labels]})
-    eval_dataframe.to_csv("eval_results.csv", index=False)
+    # eval_dataframe = pd.DataFrame({"predictions": [reversed_class_dict[k] for k in predictions],
+    #                                "gold_labels": [reversed_class_dict[j] for j in gold_labels]})
+    # eval_dataframe.to_csv("eval_results.csv", index=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

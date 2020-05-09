@@ -18,7 +18,7 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
           save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5,
           include_lengths=True, clip_val=0):
     # Set the model in training mode just to be safe
-
+    torch.cuda.empty_cache()
     model.to(device)
     model.train()
 
@@ -56,21 +56,25 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
                 X = X.to(device)
 
             loss = 0
-            for p, task in enumerate(tasks):
-                if model.return_weights:
-                    outputs, weights = model(X, task)
-                else:
-                    outputs = model(X, task)
-                all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
-                epoch_weights[task].append(weights.detach().cpu())
+
+            if model.return_weights:
+                outputs, weights = model(X, tasks)
+                for w in range(len(tasks)):
+                    epoch_weights[tasks[w]].append(weights[w].detach().cpu())
+            else:
+                outputs = model(X, tasks)
+            for p in range(len(tasks)):
+                all_predictions[tasks[p]].extend(outputs[p].detach().cpu().argmax(1).tolist())
                 # see if we need to even this out
-                loss += criterion_dict[task](outputs, targets[p])
+                loss += criterion_dict[tasks[p]](outputs[p], targets[p])
 
             # training the network
             loss.backward()
             if clip_val:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_val)
+
             optimizer.step()
+
             for t in range(len(tasks)):
                 all_ground_truth_labels[tasks[t]].extend(targets[t].cpu().tolist())
                 epoch_running_loss[tasks[t]] += loss.item()
@@ -90,28 +94,29 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
             if tensorboard_dir:
                 writer.add_scalar('loss_%s' % task, epoch_running_loss[task], epoch)
                 writer.add_scalar('accuracy_%s' % task, acc, epoch)
-                epoch_weights[task] = torch.cat(epoch_weights[task], dim=0)
+                if model.return_weights:
+                    epoch_weights[task] = torch.cat(epoch_weights[task], dim=0)
 
-                task_mean = epoch_weights[task].mean(0).tolist()[0]
+                    task_mean = epoch_weights[task].mean(0).tolist()[0]
 
-                expert_weights = epoch_weights[task].squeeze().numpy()
-                task_classes_df = pd.DataFrame(expert_weights,
-                             columns=range(expert_weights.shape[1]))
-                task_classes_df['class'] = all_ground_truth_labels[task]
+                    expert_weights = epoch_weights[task].squeeze().numpy()
+                    task_classes_df = pd.DataFrame(expert_weights,
+                                 columns=range(expert_weights.shape[1]))
+                    task_classes_df['class'] = all_ground_truth_labels[task]
 
-                figure = plt.figure()
-                ax = figure.add_subplot(111)
-                task_classes_df.groupby('class').mean().plot(kind='bar', ax=ax)
-                writer.add_figure("weight distribution classes for Task %s" % task,
-                                  figure, epoch)
+                    figure = plt.figure()
+                    ax = figure.add_subplot(111)
+                    task_classes_df.groupby('class').mean().plot(kind='bar', ax=ax)
+                    writer.add_figure("weight distribution classes for Task %s" % task,
+                                      figure, epoch)
 
-                fig2 = plt.figure()
-                ax2 = fig2.add_subplot(111)
+                    fig2 = plt.figure()
+                    ax2 = fig2.add_subplot(111)
 
-                y_pos = np.arange(len(task_mean))
-                ax2.bar(y_pos, task_mean)
-                writer.add_figure("Average distribution of experts %s" % task,
-                                  fig2, epoch)
+                    y_pos = np.arange(len(task_mean))
+                    ax2.bar(y_pos, task_mean)
+                    writer.add_figure("Average distribution of experts %s" % task,
+                                      fig2, epoch)
     print('Finished Training')
     torch.save(model.state_dict(), "%s/%s_epoch_%d.pt" % (save_path, save_name, epoch))
     #print(model.softmax(model.gating_network(inputs, lengths=lengths)).unsqueeze(1))
@@ -142,15 +147,16 @@ def evaluation(model, dataset, criterion=None, device=None):
         else:
             X = X.to(device)
 
-        for i, task in enumerate(tasks):
-            if model.return_weights:
-                outputs, weights = model(X, task)
-            else:
-                outputs = model(X, task)
-            all_predictions[task].extend(outputs.detach().cpu().argmax(1).tolist())
-            epoch_weights[task].append(weights)
-        for t in range(len(tasks)):
-            all_ground_truth_labels[tasks[t]].extend(targets[t].cpu().tolist())
+        if model.return_weights:
+            outputs, weights = model(X, tasks)
+            for w in range(len(tasks)):
+                epoch_weights[tasks[w]].append(weights[w].detach().cpu())
+        else:
+            outputs = model(X, tasks)
+        for p in range(len(tasks)):
+            all_predictions[tasks[p]].extend(outputs[p].detach().cpu().argmax(1).tolist())
+            all_ground_truth_labels[tasks[p]].extend(targets[p].cpu().tolist())
+            # see if we need to even this out
 
     for task in all_predictions.keys():
         correct_list = [1 if a == b else 0 for a, b in zip(all_predictions[task], all_ground_truth_labels[task])]

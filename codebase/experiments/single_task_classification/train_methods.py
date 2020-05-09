@@ -5,6 +5,7 @@ from sklearn.metrics import f1_score, recall_score, precision_score
 from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
 
+
 def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"), include_lengths=False,
            save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5, clip_val=0):
     # Set the model in training mode just to be safe

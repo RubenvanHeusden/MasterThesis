@@ -55,7 +55,7 @@ def main(args):
     else:
         criterion = nn.CrossEntropyLoss()
 
-    optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, betas=(0.90, 0.98), eps=10e-9)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
     train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,

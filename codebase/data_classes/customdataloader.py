@@ -34,6 +34,7 @@ class CustomDataLoader:
         iterators = []
         # Build the vocabulary for the data, this converts all the words into integers
         # pointing to the corresponding rows in the word embedding matrix
+        self.text_field.build_vocab(self.datasplits[0])
         self.text_field.build_vocab(self.datasplits[0], vectors=vectors, vectors_cache=vector_cache)
         for key, val in self.datasplits[0].fields.items():
             if key != "text" and key != 'id' and val:

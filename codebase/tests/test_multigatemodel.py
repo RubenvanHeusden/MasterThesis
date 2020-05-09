@@ -28,25 +28,24 @@ class TestMultigateModel(unittest.TestCase):
                                           towers=self.towers,
                                           device=torch.device('cpu'),
                                           include_lens=False,
-                                          batch_size=self.batch_size)
+                                          batch_size=self.batch_size, return_weights=False)
 
     def test_output_single_example(self):
         batch_size = 1
         self.model.batch_size = batch_size
 
-        for task in range(self.n_tasks):
-            x = torch.rand(size=(batch_size, self.n_in))
-            outputs = self.model(x, tower=self.names[task])
-            self.assertEqual(outputs.shape, torch.Size([self.task_outs[task]]))
+        x = torch.rand(size=(batch_size, self.n_in))
+        outputs = self.model(x, tower=self.names)
+        for i in range(len(self.task_outs)):
+            self.assertEqual(outputs[i].shape, torch.Size([self.task_outs[i]]))
 
     def test_output_batch_input(self):
         batch_size = 4
         self.model.batch_size = batch_size
-
-        for task in range(self.n_tasks):
-            x = torch.rand(size=(batch_size, self.n_in))
-            outputs = self.model(x, tower=self.names[task])
-            self.assertEqual(outputs.shape, torch.Size([batch_size, self.task_outs[task]]))
+        x = torch.rand(size=(batch_size, self.n_in))
+        outputs = self.model(x, tower=self.names)
+        for i in range(len(self.task_outs)):
+            self.assertEqual(outputs[i].shape, torch.Size([batch_size, self.task_outs[i]]))
 
     def test_output_with_included_lengths(self):
         embedding_dim = 20
@@ -64,12 +63,13 @@ class TestMultigateModel(unittest.TestCase):
                                                        device=torch.device("cpu"),
                                                        use_lengths=use_lengths) for _ in range(self.n_experts)])
 
-        for task in range(self.n_tasks):
-            sentence_lengths = torch.randint(low=1, high=self.n_in - 1, size=[batch_size])
-            x = torch.randint(low=0, high=30, size=(batch_size, self.n_in))
+        sentence_lengths = torch.randint(low=1, high=self.n_in - 1, size=[batch_size])
+        x = torch.randint(low=0, high=30, size=(batch_size, self.n_in))
 
-            outputs = self.model((x, sentence_lengths), tower=self.names[task])
-            self.assertEqual(outputs.shape, torch.Size([batch_size, self.task_outs[task]]))
+        outputs = self.model((x, sentence_lengths), tower=self.names)
+
+        for i in range(len(self.task_outs)):
+            self.assertEqual(outputs[i].shape, torch.Size([batch_size, self.task_outs[i]]))
 
     def test_weight_shapes(self):
         pass

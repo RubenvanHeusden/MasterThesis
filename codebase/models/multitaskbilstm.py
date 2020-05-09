@@ -4,8 +4,8 @@ import torch.nn as nn
 # TODO: set trainable weights to false
 
 
-class BiLSTM(nn.Module):
-    def __init__(self, vocab, hidden_dim: int, output_dim: int, dropout: float = 0.3,
+class MultitaskBiLSTM(nn.Module):
+    def __init__(self, vocab, hidden_dim: int,  dropout: float = 0.3,
                  device=torch.device("cpu"), use_lengths=True):
         """
         @param vocab: a vector containing the word embeddings of the word in the train set
@@ -15,17 +15,21 @@ class BiLSTM(nn.Module):
         @param device: torch.device specifying if model is ran on cpu or gpu
         @param use_lengths: boolean specifying whether to remove padding for LSTM input or not
         """
-        super(BiLSTM, self).__init__()
+        super(MultitaskBiLSTM, self).__init__()
+        self.params = locals()
         self.embed = nn.Embedding(*vocab.shape)
         self.embed.weight.data.copy_(vocab)
         self.embedding_dim = vocab.shape[1]
         self.hidden_dim = hidden_dim
-        self.output_dim = output_dim
         self.lstm = nn.LSTM(self.embedding_dim, hidden_dim, batch_first=True, bidirectional=True)
-        self.fc_out = nn.Linear(hidden_dim*2, output_dim)
         self.dropout = nn.Dropout(dropout)
         self.device = device
         self.use_lengths = use_lengths
+        self.params = {"vocab": vocab,
+                       "embedding_dim": self.embedding_dim,
+                       "hidden_dim": hidden_dim,
+                       "dropout": dropout,
+                       "device": device}
 
     def forward(self, x):
         """
@@ -57,4 +61,4 @@ class BiLSTM(nn.Module):
         del b
         del h_0
         del c_0
-        return self.fc_out(self.dropout(final_hidden_state))
+        return self.dropout(final_hidden_state)

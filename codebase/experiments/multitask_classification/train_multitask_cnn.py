@@ -21,9 +21,8 @@ def main(args):
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    include_lens = args.use_lengths
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
@@ -58,7 +57,7 @@ def main(args):
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
     train(multitask_model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
-          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
+          include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
 
@@ -94,7 +93,6 @@ if __name__ == "__main__":
     parser.add_argument("--dropout", type=float, default=0.3)
 
     parser.add_argument("--embedding_dim", type=int, default=300)
-    parser.add_argument("--hidden_dim", type=int, default=64)
     parser.add_argument("--num_filters", type=int, default=100)
     parser.add_argument("--filter_list", nargs='+', required=True)
     parser.add_argument("--linear_layers", nargs='+', required=True)

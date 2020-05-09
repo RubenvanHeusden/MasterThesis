@@ -19,9 +19,11 @@ def main(args):
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
+
     # Lines below are make sure cuda is (almost) deterministic, can slow down training
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
+
     TEXT = Field(lower=args.do_lowercase, include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
     # TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True)
@@ -58,20 +60,20 @@ def main(args):
     optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    # train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
-    #       include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_dataset" % args.dataset,
-    #       tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
-    #       clip_val=args.gradient_clip)
+    train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
+          include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_dataset" % args.dataset,
+          tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
+          clip_val=args.gradient_clip)
 
-    reversed_class_dict = {val: key for key, val in dataset[0].fields['label'].vocab.stoi.items()}
-    print(reversed_class_dict)
+    #reversed_class_dict = {val: key for key, val in dataset[0].fields['label'].vocab.stoi.items()}
+    #print(reversed_class_dict)
     print("Evaluating model")
-    #model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_%d.pt" % (args.dataset, args.n_epochs-1)))
-    model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_60.pt" % args.dataset))
+    model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_%d.pt" % (args.dataset, args.n_epochs-1)))
+    #model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_60.pt" % args.dataset))
     predictions, gold_labels = evaluation(model, data_iterators[-1], criterion, device=args.device, include_lengths=args.use_lengths)
-    eval_dataframe = pd.DataFrame({"predictions": [reversed_class_dict[k] for k in predictions],
-                                   "gold_labels": [reversed_class_dict[j] for j in gold_labels]})
-    eval_dataframe.to_csv("eval_results.csv", index=False)
+    # eval_dataframe = pd.DataFrame({"predictions": [reversed_class_dict[k] for k in predictions],
+    #                                "gold_labels": [reversed_class_dict[j] for j in gold_labels]})
+    # eval_dataframe.to_csv("eval_results.csv", index=False)
 
 
 if __name__ == "__main__":

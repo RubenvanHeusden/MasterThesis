@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
+import sys
+sys.path.append('/content/gdrive/My Drive')
 from codebase.models.positionalencoder import PositionalEncoder
-
+import math
 # See if I can update PyTorch so it doesn't get angry about not finding Transformers
 
 # TODO: check if I am doing the right amount of linear layers and dropout order
@@ -67,6 +69,7 @@ class TransformerModel(nn.Module):
         self.transformer = nn.TransformerEncoder(self._transform_encoder_layer, num_layers=num_transformer_layers)
         self.dropout = nn.Dropout(p=classification_dropout)
         self.final_fc = nn.Linear(word_embedding_matrix.shape[1], num_outputs)
+        self.init_weights()
 
     def forward(self, x):
         pad_mask = torch.zeros_like(x)
@@ -86,3 +89,8 @@ class TransformerModel(nn.Module):
         x = self.transformer(x, src_key_padding_mask=pad_mask)
         # grab the cls token hidden dim for the linear output layer
         return self.final_fc(self.dropout(x[0, :, :]))
+
+    def init_weights(self):
+        initrange = 0.1
+        self.final_fc.bias.data.zero_()
+        self.final_fc.weight.data.uniform_(-initrange, initrange)

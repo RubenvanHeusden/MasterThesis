@@ -7,7 +7,7 @@ from typing import List, Any, Dict
 
 class MultiGateMixtureofExperts(nn.Module):
     def __init__(self, shared_layers: List[Any], gating_networks: List[Any], towers: Dict[Any, Any], device,
-                 include_lens: bool, batch_size: int, return_weights: bool = True):
+                 include_lens: bool, batch_size: int, return_weights: bool = True, gating_drop=0.1):
         """
 
         @param shared_layers: a list of nn.Modules through which the input is fed
@@ -41,8 +41,9 @@ class MultiGateMixtureofExperts(nn.Module):
         # Check dimensions here!
         self.softmax = nn.Softmax(dim=1)
         self.return_weights = return_weights
+        self.gating_drop = nn.Dropout(p=gating_drop)
 
-    def forward(self, x, tower="category"):
+    def forward(self, x, tower=("category", "emotion")):
         """
         @param x: if include_lens is False, this is a matrix of size [batch_size, max_sent_length]
         containing indices into the vocabulary matrix. If include_lens is True, x should be a tuple
@@ -55,11 +56,15 @@ class MultiGateMixtureofExperts(nn.Module):
         """
         # Depending on the task we select the appropriate gating network and
         # Task specific tower and compute the activations for that batch
-        expert_weights = self.softmax(self.gating_networks[self.tower_dict[tower]](x)).unsqueeze(1)
-
-        x = torch.stack([net(x) for net in self.shared_layers], dim=0).permute(1, 0, 2)
-        x = torch.bmm(expert_weights, x)
-        x = self.towers[self.tower_dict[tower]](x)
+        stacked_x = torch.stack([net(x) for net in self.shared_layers], dim=0).permute(1, 0, 2)
+        outputs = []
+        weights = []
+        for t in tower:
+            expert_weights = self.softmax(self.gating_drop(self.softmax(self.gating_networks[self.tower_dict[t]](x)))).unsqueeze(1)
+            weighted_x = torch.bmm(expert_weights, stacked_x)
+            weighted_x = self.towers[self.tower_dict[t]](weighted_x)
+            outputs.append(weighted_x.squeeze())
+            weights.append(expert_weights)
         if self.return_weights:
-            return x.squeeze(), expert_weights
-        return x.squeeze()
+            return outputs, weights
+        return outputs

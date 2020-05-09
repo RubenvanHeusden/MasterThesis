@@ -22,6 +22,7 @@ def main(args):
     # Lines below are make sure cuda is (almost) deterministic, can slow down training
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
+
     TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
     # TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True)

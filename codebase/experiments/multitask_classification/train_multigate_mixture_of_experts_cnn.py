@@ -18,9 +18,8 @@ def main(args):
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    include_lens = args.use_lengths
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
@@ -49,7 +48,7 @@ def main(args):
 
     model = MultiGateMixtureofExperts(shared_layers=shared_layers, gating_networks=gating_networks,
                                       towers=towers, device=args.device, include_lens=args.use_lengths,
-                                      batch_size=args.batch_size)
+                                      batch_size=args.batch_size, gating_drop=args.gate_dropout)
 
     if args.class_weighting:
         task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
@@ -61,7 +60,7 @@ def main(args):
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
     train(model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
-          include_lengths=include_lens, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
+          include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
 
@@ -102,6 +101,7 @@ if __name__ == "__main__":
     parser.add_argument("--filter_list_experts", nargs='+', required=True)
     parser.add_argument("--fix_length", type=int, default=None)
     parser.add_argument("--class_weighting", type=str, default="False")
+    parser.add_argument("--gate_dropout", type=float, default=0.0)
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)

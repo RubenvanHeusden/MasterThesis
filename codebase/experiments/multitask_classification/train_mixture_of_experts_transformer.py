@@ -22,8 +22,8 @@ def main(args):
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
     TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=False,
                  batch_first=True, fix_length=args.fix_length, init_token="[cls]")
@@ -58,7 +58,7 @@ def main(args):
 
     model = MultiGateMixtureofExperts(shared_layers=shared_layers, gating_networks=gating_networks,
                                       towers=towers, device=args.device, include_lens=False,
-                                      batch_size=args.batch_size)
+                                      batch_size=args.batch_size, gating_drop=args.gate_dropout)
 
     if args.class_weighting:
         task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
@@ -114,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--linear_layers", nargs='+', required=True)
     parser.add_argument("--n_experts", type=int, default=3)
     parser.add_argument("--hidden_dim_g", type=int, default=8)
+    parser.add_argument("--gate_dropout", type=float, default=0.0)
 
     # Logging arguments
     parser.add_argument("--save_interval", type=int, default=10)

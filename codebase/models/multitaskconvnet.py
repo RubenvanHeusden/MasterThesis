@@ -23,13 +23,14 @@ class MultitaskConvNet(nn.Module):
         self.dropout = nn.Dropout(p=dropbout_probs)
         self.embed = nn.Embedding(*embed_matrix.shape)
         self.embed.weight.data.copy_(embed_matrix)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         x = x.unsqueeze(1)
         x = self.embed(x)
         filter_outs = []
         for module in self.filters:
-            filter_outs.append(self.max_over_time_pool(module(x)))
+            filter_outs.append(self.max_over_time_pool(self.relu(module(x))))
         pen_ultimate_layer = torch.cat(filter_outs, dim=1)
         output = self.dropout(pen_ultimate_layer).squeeze()
         return output

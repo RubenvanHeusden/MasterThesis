@@ -20,9 +20,11 @@ class MultiTaskModel(nn.Module):
         self.device = device
         self.include_lens = include_lens
         self.params = {"None": None}
+        self.return_weights = False
 
-    def forward(self, x, tower="category"):
+    def forward(self, x, tower=("category", "emotion")):
+        outputs = []
         x = self.shared_layer(x)
-        x = self.tower_list[self.tower_dict[tower]](x)
-        # TODO maybe add a softmax
-        return x
+        for t in tower:
+            outputs.append(self.tower_list[self.tower_dict[t]](x))
+        return outputs
