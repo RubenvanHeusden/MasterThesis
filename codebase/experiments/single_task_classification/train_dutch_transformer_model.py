@@ -61,14 +61,14 @@ def main(args):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, betas=(0.90, 0.98), eps=10e-9)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
-    train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
-          include_lengths=False, save_path=args.logdir, save_name="%s_dataset" % args.dataset,
-          tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
-          clip_val=args.gradient_clip)
+    # train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
+    #       include_lengths=False, save_path=args.logdir, save_name="%s_dataset" % args.dataset,
+    #       tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
+    #       clip_val=args.gradient_clip)
 
     print("Evaluating model")
-    #model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_100.pt" % args.dataset))
-    model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_%d.pt" % (args.dataset, args.n_epochs-1)))
+    model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_49.pt" % args.dataset))
+    #model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_%d_v2.pt" % (args.dataset, args.n_epochs-1)))
     evaluation(model, data_iterators[-1], criterion, device=args.device, include_lengths=False)
 
 

@@ -16,7 +16,7 @@ import tensorflow as tf
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
 def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
           save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5,
-          include_lengths=True, clip_val=0):
+          include_lengths=True, clip_val=0, balancing_epoch_num=0):
     # Set the model in training mode just to be safe
     torch.cuda.empty_cache()
     model.to(device)
@@ -32,6 +32,9 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
         # writer.add_graph(model, [sample])
 
     for epoch in range(n_epochs):
+
+        if balancing_epoch_num and (epoch == balancing_epoch_num):
+            model.weight_adjust_mode = None
 
         if save_path:
             if epoch % checkpoint_interval == 0:

@@ -7,6 +7,7 @@ import numpy as np
 from codebase.models.multigatemixtureofexperts import MultiGateMixtureofExperts
 from codebase.experiments.multitask_classification.train_methods import *
 from codebase.models.convnet import ConvNet
+from codebase.models.mlp import MLP
 from codebase.models.multitaskconvnet import MultitaskConvNet
 from codebase.models.mlp import MLP
 from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_class_weighting
@@ -48,7 +49,8 @@ def main(args):
 
     model = MultiGateMixtureofExperts(shared_layers=shared_layers, gating_networks=gating_networks,
                                       towers=towers, device=args.device, include_lens=args.use_lengths,
-                                      batch_size=args.batch_size, gating_drop=args.gate_dropout)
+                                      batch_size=args.batch_size, gating_drop=args.gate_dropout,
+                                      mean_diff=args.mean_diff, weight_adjust_mode=args.balancing_strategy)
 
     if args.class_weighting:
         task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
@@ -62,7 +64,7 @@ def main(args):
     train(model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
           include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
-          clip_val=args.gradient_clip)
+          clip_val=args.gradient_clip, balancing_epoch_num=args.balance_epoch_cnt)
 
     print("Evaluating model")
     model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
@@ -102,6 +104,10 @@ if __name__ == "__main__":
     parser.add_argument("--fix_length", type=int, default=None)
     parser.add_argument("--class_weighting", type=str, default="False")
     parser.add_argument("--gate_dropout", type=float, default=0.0)
+    parser.add_argument("--adaptive_gate_dropout", type=int, default=0)
+    parser.add_argument("--balancing_strategy", type=str, default=None)
+    parser.add_argument("--mean_diff", type=float, default=0.1)
+    parser.add_argument("--balance_epoch_cnt", type=int, default=50)
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)

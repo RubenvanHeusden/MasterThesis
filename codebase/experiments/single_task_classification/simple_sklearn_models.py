@@ -7,8 +7,9 @@ from sklearn.naive_bayes import ComplementNB, MultinomialNB
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV, SGDClassifier
 from sklearn.pipeline import Pipeline
 from collections import defaultdict
+from joblib import dump
 import re
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score, plot_confusion_matrix
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -17,6 +18,7 @@ from sklearn.neural_network import MLPClassifier
 # uses tf idf to vectorize documents and a given classifier
 # to classify the documents
 
+
 class TfidfClassifier:
     def __init__(self, classifier=None, path_to_datadir="data/", ngrams=None):
         self.classifier = classifier
@@ -24,8 +26,8 @@ class TfidfClassifier:
         self.path_to_datadir = path_to_datadir
 
     def classify(self, cls_pipeline):
-        train_dframe = pd.read_csv(self.path_to_datadir+'train.csv', sep=",")
-        test_dframe = pd.read_csv(self.path_to_datadir+'test.csv', sep=",")
+        train_dframe = pd.read_csv(self.path_to_datadir+'train.csv', sep="\t", quotechar="|")
+        test_dframe = pd.read_csv(self.path_to_datadir+'test.csv', sep="\t", quotechar="|")
 
         total_frame = pd.concat([train_dframe, test_dframe], axis=0)
         total_frame = total_frame.sample(frac=1).reset_index(drop=True)
@@ -36,12 +38,21 @@ class TfidfClassifier:
         train_sentences = [" ".join(item.split(" ")[:100]) for item in train_dframe['text'].tolist()]
         test_sentences = [" ".join(item.split(" ")[:100]) for item in test_dframe['text'].tolist()]
 
-        train_labels = train_dframe['act'].tolist()
-        test_labels = test_dframe['act'].tolist()
+        train_labels = train_dframe['label'].tolist()
+        test_labels = test_dframe['label'].tolist()
 
         cls_pipeline.fit(train_sentences, train_labels)
-        return classification_report(test_labels, cls_pipeline.predict(test_sentences))
-
+        plt.rcParams.update({"font.size": 5})
+        plot_confusion_matrix(cls_pipeline, test_sentences, test_labels, normalize='true', cmap='Blues',
+                              include_values=True, ax=None, xticks_rotation='vertical', values_format=".2f")
+        plt.title("Confusion Matrix van het TF-IDF model")
+        plt.xlabel("Voorspelling")
+        plt.ylabel("Echte Klasse")
+        plt.show()
+        quit()
+        dump(cls_pipeline, 'svm_model.joblib')
+        # return classification_report(test_labels, cls_pipeline.predict(test_sentences))
+        return accuracy_score(test_labels, cls_pipeline.predict(test_sentences))
 # Try a naive bayes classifier?
 
 # f_cls = SVC(class_weight='balanced')
@@ -68,8 +79,8 @@ pipelines = [Pipeline([('tfidf', TfidfVectorizer()), ('clf', LinearSVC(class_wei
 pipeline_names = ['SVM', "Random_forest", "Naive Bayes", "Logistic Regression"]
 
 print("---Starting---")
-classifier = TfidfClassifier(classifier=None, path_to_datadir="../.data/dailydialog/")
-print(classifier.classify(cls_pipeline=pipelines[0]))
+classifier = TfidfClassifier(classifier=None, path_to_datadir="D:/bert_format_data/full/")
+classifier.classify(cls_pipeline=pipelines[0])
 # for idx in range(len(pipelines)):
 #     for i in tqdm(range(2, 19)):
 #         classifier_k_val_scores[pipeline_names[idx]].append(classifier.classify(k_val=i, cls_pipeline=pipelines[idx]))
