@@ -1,4 +1,5 @@
 import torch
+import sys
 import torch.nn as nn
 from typing import List, Any, Dict
 # This class implements a Multigate Mixture of Experts (MMoE) model, as first
@@ -63,6 +64,7 @@ class MultiGateMixtureofExperts(nn.Module):
         self.gating_drop = nn.Dropout(p=gating_drop)
         self.weight_adjust_mode = weight_adjust_mode
         self.m = mean_diff
+        self.eps = sys.float_info.epsilon
 
         print("\n")
         print("\t - MMoE Model Settings - \t")
@@ -103,16 +105,17 @@ class MultiGateMixtureofExperts(nn.Module):
                 self.gating_net_running_means[t] = new_mean
                 expert_weights = self.softmax(expert_weights).unsqueeze(1)
             elif self.weight_adjust_mode == "dropout":
-                expert_weights = self.softmax(self.gating_drop(self.softmax(self.gating_networks[self.tower_dict[t]](x)))).unsqueeze(1)
+
+                dropped_weights = self.gating_drop(self.softmax(self.gating_networks[self.tower_dict[t]](x)))
+                expert_weights = (dropped_weights / (dropped_weights.sum(1)+self.eps).unsqueeze(1)).unsqueeze(1)
             else:
                 expert_weights = self.softmax(self.gating_networks[self.tower_dict[t]](x)).unsqueeze(1)
 
             weighted_x = torch.bmm(expert_weights, stacked_x)
-            print(weighted_x.shape)
-            quit()
             weighted_x = self.towers[self.tower_dict[t]](weighted_x)
             outputs.append(weighted_x.squeeze())
             weights.append(expert_weights)
+
         if self.return_weights:
             return outputs, weights
         return outputs

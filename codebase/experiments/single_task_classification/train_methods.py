@@ -42,6 +42,7 @@ def train(model, criterion, optimizer, scheduler, dataset, n_epochs=5, device=to
             else:
                 X = X.to(device)
             outputs = model(X)
+            print(outputs.shape, y.shape)
             loss = criterion(outputs, y)
             # training the network
             loss.backward()

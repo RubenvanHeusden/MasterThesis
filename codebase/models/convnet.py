@@ -10,7 +10,7 @@ class ConvNet(nn.Module):
 
     """
     def __init__(self, input_channels: int, output_dim: int, filter_list: List[int],
-                 embed_matrix, num_filters: int, dropbout_probs: float=0.5):
+                 embed_matrix, num_filters: int, dropbout_probs: float = 0.5, use_bert_embeds: bool = False):
         """
 
         @param input_channels: integer specifying the number of input channels of the 'image'
@@ -42,14 +42,19 @@ class ConvNet(nn.Module):
         self.embed.weight.data.copy_(embed_matrix)
         self.embed.requires_grad = True
         self.relu = nn.ReLU()
+        self.use_bert_embeddings = use_bert_embeds
 
     def forward(self, x):
+        b = x.shape[0]
         """
         @param x: input of size (batch_size, max_sen_length_batch)
         @return: output of the CNN applied to the input x
         """
+        if isinstance(x, list):
+            x = x[0]
         x = x.unsqueeze(1)
-        x = self.embed(x)
+        if not self.use_bert_embeddings:
+            x = self.embed(x)
         filter_outs = []
         for module in self.filters:
             module_out = self.relu(module(x))
@@ -59,4 +64,4 @@ class ConvNet(nn.Module):
         output = self.dropout(pen_ultimate_layer).squeeze()
         output = self.fc_layer(output)
 
-        return output
+        return output.view(b, -1)

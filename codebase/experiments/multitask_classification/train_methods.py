@@ -10,13 +10,12 @@ from torch.utils.tensorboard import SummaryWriter
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
 
 
 # TODO: towers should be a dict of shape "{"example_task_tower": tower}"
 def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, device=torch.device("cpu"),
           save_path=None, save_name=None, tensorboard_dir=False, checkpoint_interval=5,
-          include_lengths=True, clip_val=0, balancing_epoch_num=0):
+          include_lengths=True, clip_val=0, balancing_epoch_num=0, balancing_mode=None):
     # Set the model in training mode just to be safe
     torch.cuda.empty_cache()
     model.to(device)
@@ -33,7 +32,10 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
 
     for epoch in range(n_epochs):
 
-        if balancing_epoch_num and (epoch == balancing_epoch_num):
+        if balancing_mode == "dropout" and balancing_epoch_num:
+            model.gating_drop.p = model.gating_drop.p * 0.95
+
+        if balancing_epoch_num and (epoch == balancing_epoch_num) and (balancing_mode != "dropout"):
             model.weight_adjust_mode = None
 
         if save_path:
@@ -47,11 +49,10 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
         for i, batch in tqdm(enumerate(dataset)):
             optimizer.zero_grad()
             X, *targets, tasks = batch
-
             for y in range(len(targets)):
                 targets[y] = targets[y].to(device)
 
-            if isinstance(X, tuple):
+            if isinstance(X, tuple) or isinstance(X, list):
                 X = list(X)
                 for z in range(len(X)):
                     X[z] = X[z].to(device)
@@ -97,6 +98,7 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
             if tensorboard_dir:
                 writer.add_scalar('loss_%s' % task, epoch_running_loss[task], epoch)
                 writer.add_scalar('accuracy_%s' % task, acc, epoch)
+                writer.add_scalar('dropout', model.gating_drop.p, epoch)
                 if model.return_weights:
                     epoch_weights[task] = torch.cat(epoch_weights[task], dim=0)
 
@@ -106,7 +108,6 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
                     task_classes_df = pd.DataFrame(expert_weights,
                                  columns=range(expert_weights.shape[1]))
                     task_classes_df['class'] = all_ground_truth_labels[task]
-
                     figure = plt.figure()
                     ax = figure.add_subplot(111)
                     task_classes_df.groupby('class').mean().plot(kind='bar', ax=ax)

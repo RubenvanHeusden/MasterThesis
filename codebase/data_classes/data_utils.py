@@ -1,14 +1,12 @@
 import torch
-import itertools
-from typing import List, Any
-from torchtext.data import Field, LabelField, Example, TabularDataset, Dataset
-from imblearn.over_sampling import RandomOverSampler
-from sklearn.model_selection import StratifiedShuffleSplit
-from codebase.data_classes.dailydialogdataset import DailyDialogDataset
-from codebase.data_classes.enrondataset import EnronDataset
-from codebase.data_classes.customdataset import CustomDataset
 import numpy as np
+from imblearn.over_sampling import RandomOverSampler
+from codebase.data_classes.enrondataset import EnronDataset
 from sklearn.utils.class_weight import compute_class_weight
+from codebase.data_classes.dailydialogdataset import DailyDialogDataset
+from codebase.data_classes.bertemeddingenrondataset import BertEmbeddingEnronDataset
+from codebase.data_classes.bertembeddingcustomdataset import BertEmbeddingCustomDataset
+from codebase.data_classes.bertembeddingdailydialogdataset import BertEmbeddingDailyDialogDataset
 
 
 def single_task_dataset_prep(dataset_string):
@@ -37,21 +35,6 @@ def single_task_dataset_prep(dataset_string):
         output_dim = 10
         target = ("emotion", )
 
-    elif dataset_string == "CUSTOM-CAT":
-        dataset = CustomDataset
-        output_dim = 18
-        target = ('label', )
-
-    elif dataset_string == "CUSTOM-EMOT":
-        dataset = CustomDataset
-        output_dim = 8
-        target = ("emotion_classes", )
-
-    elif dataset_string == "CUSTOM-INTENT":
-        dataset = CustomDataset
-        output_dim = 5
-        target = ("intent_classes", )
-
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
                         "argument parser for details on valid arguments"))
@@ -69,10 +52,21 @@ def multi_task_dataset_prep(dataset_string):
         output_dim = [6, 10]
         targets = ("category", "emotion")
 
-    elif dataset_string == "CUSTOM":
-        dataset = CustomDataset
+    elif dataset_string == "DAILYDIALOG-BERT":
+        dataset = BertEmbeddingDailyDialogDataset(mode="train"), BertEmbeddingDailyDialogDataset(mode="test")
+        output_dim = [7, 4, 10]
+        targets = ("emotion", "act", "topic")
+
+    elif dataset_string == "ENRON-BERT":
+        dataset = BertEmbeddingEnronDataset(mode="train"), BertEmbeddingEnronDataset(mode="test")
+        output_dim = [6, 10]
+        targets = ("category", "emotion")
+
+    elif dataset_string == "CUSTOM-BERT":
+        dataset = BertEmbeddingCustomDataset(mode="train"), BertEmbeddingCustomDataset(mode="test")
         output_dim = [18, 5, 8]
         targets = ("label", "intent_classes", "emotion_classes")
+
 
     else:
         raise(Exception("Invalid dataset argument, please refer to the help function of the "
@@ -107,10 +101,10 @@ def multitask_class_weighting(dataset, target_names, num_classes):
 
     task_weights = {}
     task_totals = {task: [] for task in target_names}
-
     for X, *targets, tasks in dataset:
         for task, task_name in zip(targets, tasks):
             task_totals[task_name].append(task)
+
     for name in target_names:
         task_y = torch.cat(task_totals[name], dim=0)
         unique_task = torch.unique(task_y)

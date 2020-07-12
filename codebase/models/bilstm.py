@@ -32,7 +32,7 @@ class BiLSTM(nn.Module):
         @param x: tensor of size (batch_size, seq_length)
         @return:
         """
-        if self.use_lengths:
+        if isinstance(x, list):
             inputs, lengths = x
             b = inputs.shape[0]
             inputs = self.embed(inputs)

@@ -1,9 +1,12 @@
 import torch
 import torch.nn as nn
 import sys
+
 sys.path.append('/content/gdrive/My Drive')
 from codebase.models.positionalencoder import PositionalEncoder
 import math
+
+
 # See if I can update PyTorch so it doesn't get angry about not finding Transformers
 
 # TODO: check if I am doing the right amount of linear layers and dropout order
@@ -12,9 +15,10 @@ import math
 
 
 class TransformerModel(nn.Module):
-    def __init__(self, max_seq_len: int, num_outputs: int,  word_embedding_matrix, feed_fwd_dim: int = 2048,
+    def __init__(self, max_seq_len: int, num_outputs: int, word_embedding_matrix, feed_fwd_dim: int = 2048,
                  num_transformer_layers=6, num_transformer_heads=6, pos_encoding_dropout: float = 0.1,
-                 classification_dropout: float = 0.2, batch_first: bool = False, pad_index: int = 1):
+                 classification_dropout: float = 0.2, batch_first: bool = False, pad_index: int = 1,
+                 is_gate=False, use_bert_embeds=False):
         """
 
         :param max_seq_len: integer specifying the maximum length of the input sequences.
@@ -60,7 +64,7 @@ class TransformerModel(nn.Module):
         self.pad_index = pad_index
 
         self.positional_encoder = PositionalEncoder(max_seq_len, embedding_dim=word_embedding_matrix.shape[1],
-                                                     dropout=pos_encoding_dropout, batch_first=batch_first)
+                                                    dropout=pos_encoding_dropout, batch_first=batch_first)
 
         self._transform_encoder_layer = nn.TransformerEncoderLayer(d_model=word_embedding_matrix.shape[1],
                                                                    nhead=num_transformer_heads,
@@ -70,8 +74,21 @@ class TransformerModel(nn.Module):
         self.dropout = nn.Dropout(p=classification_dropout)
         self.final_fc = nn.Linear(word_embedding_matrix.shape[1], num_outputs)
         self.init_weights()
+        self.is_gate = is_gate
+        self.use_bert_embeddings = use_bert_embeds
 
     def forward(self, x):
+        if isinstance(x, list):
+            x = x[0]
+        if self.use_bert_embeddings:
+            x = self.positional_encoder(x)
+            x = self.transformer(x)
+            return self.final_fc(self.dropout(x[0, :, :]))
+
+        if self.is_gate:
+            init_tokens = torch.tensor([2 for _ in range(x.shape[0])]).unsqueeze(1).cuda()
+            x = torch.cat((init_tokens, x), dim=1)
+
         pad_mask = torch.zeros_like(x)
         pad_mask[x == self.pad_index] = 1
         if self.batch_first:

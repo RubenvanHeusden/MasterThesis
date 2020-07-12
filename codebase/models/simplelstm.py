@@ -6,7 +6,7 @@ import torch.nn as nn
 
 class SimpleLSTM(nn.Module):
     def __init__(self, vocab, hidden_dim: int, output_dim: int, dropout: float = 0.3,
-                 device=torch.device("cpu"), use_lengths=True):
+                 device=torch.device("cpu"), use_lengths=True, use_bert_embeds: bool = False):
         """
         @param vocab: a vector containing the word embeddings of the word in the train set
         @param hidden_dim: int specifying number of hidden units in LSTM
@@ -33,20 +33,23 @@ class SimpleLSTM(nn.Module):
                        "output_dim": output_dim,
                        "dropout": dropout,
                        "device": device}
+        self.use_bert_embeds = use_bert_embeds
 
     def forward(self, x):
         """
         @param x: tensor of size (batch_size, seq_length)
         @return: 
         """
-        if self.use_lengths:
+        if isinstance(x, list):
             inputs, lengths = x
             b = inputs.shape[0]
-            inputs = self.embed(inputs)
+            if not self.use_bert_embeds:
+                inputs = self.embed(inputs)
             x = nn.utils.rnn.pack_padded_sequence(inputs, lengths, batch_first=True, enforce_sorted=False)
         else:
             b = x.shape[0]
-            x = self.embed(x)
+            if not self.use_bert_embeds:
+                x = self.embed(x)
 
         h_0 = torch.zeros(1, b, self.hidden_dim).to(self.device)
         c_0 = torch.zeros(1, b, self.hidden_dim).to(self.device)
