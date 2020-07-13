@@ -78,14 +78,14 @@ class MultiGateMixtureofExperts(nn.Module):
 
     def forward(self, x, tower=("category", "emotion")):
         """
-        @param x: if include_lens is False, this is a matrix of size [batch_size, max_sent_length]
+        :param x: if include_lens is False, this is a matrix of size [batch_size, max_sent_length]
         containing indices into the vocabulary matrix. If include_lens is True, x should be a tuple
         containing (x: [batch_size, max_sent_length], lengths: [batch_size]) where lengths should contain
         integers indicating the true length of each sequence before padding
 
-        @param tower: a string indicating which task specific tower should be used
+        :param tower: a string indicating which task specific tower should be used
 
-        @return: the output of the Multigate Mixture of Experts model
+        :return: the output of the Multigate Mixture of Experts model
         """
         # Depending on the task we select the appropriate gating network and
         # Task specific tower and compute the activations for that batch

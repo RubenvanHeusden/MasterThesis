@@ -18,18 +18,12 @@ from codebase.models.multigatemixtureofexperts import MultiGateMixtureofExperts
 from codebase.data_classes.data_utils import multitask_class_weighting, get_num_classes_dataset
 
 
-
-
-
-# TODO add args.data_path to cmd arguments
-# TODO also add the args.targets argument
-
 def main(args):
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
     np.random.seed(args.random_seed)
 
-    TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=True, batch_first=True,
+    TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=args.use_lengths, batch_first=True,
                  fix_length=args.fix_length)
 
     output_dimensions = get_num_classes_dataset(args.data_path, args.target_names)
@@ -46,20 +40,30 @@ def main(args):
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
 
     # initialize the multiple CNNs and gating functions
-    # gating_networks = [ConvNet(input_channels=1, filter_list=args.filter_list_g,
-    #                 embed_matrix=TEXT.vocab.vectors, num_filters=args.num_filters_g, output_dim=args.n_experts) for _ in
-    #                                             range(len(target_names))]
+    if args.gating_nets_type == "CNN":
+        gating_networks = [ConvNet(input_channels=1, filter_list=args.filter_list_g,
+                        embed_matrix=TEXT.vocab.vectors, num_filters=args.num_filters_g, output_dim=args.n_experts) for _ in
+                                                    range(len(args.target_names))]
+    elif args.gating_nets_type == "LSTM":
+        gating_networks = [SimpleLSTM(TEXT.vocab.vectors, args.hidden_dim_g, args.n_experts,
+                                                               device=args.device, use_lengths=args.use_lengths) for _ in
+                                                    range(len(args.target_names))]
 
-    # gating_networks = [SimpleLSTM(TEXT.vocab.vectors, args.hidden_dim_g, args.n_experts,
-    #                                                        device=args.device, use_lengths=args.use_lengths) for _ in
-    #                                             range(len(target_names))]
-
-    # gating_networks = [BiLSTM(TEXT.vocab.vectors, args.hidden_dim_g, args.n_experts,
-    #                                                        device=args.device, use_lengths=args.use_lengths) for _ in
-    #                                             range(len(target_names))]
-
-    gating_networks = [MLPGate(args.fix_length, args.n_experts, TEXT.vocab.vectors) for _ in
+    elif args.gating_nets_type == "MLP":
+        gating_networks = [MLPGate(args.fix_length, args.n_experts, TEXT.vocab.vectors) for _ in
                                                 range(len(args.target_names))]
+
+    elif args.gating_nets_type == "TRANSFORMER":
+        gating_networks = [TransformerModel(max_seq_len=args.fix_length,
+                                            num_outputs=args.n_experts,
+                                            word_embedding_matrix=TEXT.vocab.vectors,
+                                            feed_fwd_dim=args.transformer_fwd_dim,
+                                            num_transformer_layers=args.num_transformer_layers,
+                                            num_transformer_heads=args.num_transformer_heads,
+                                            pos_encoding_dropout=0.2,
+                                            classification_dropout=0.3,
+                                            batch_first=True,
+                                            pad_index=TEXT.vocab.stoi['pad']) for _ in range(len(args.target_names))]
 
     shared_layers = [MultitaskConvNet(input_channels=1, filter_list=args.filter_list_experts,
                     embed_matrix=TEXT.vocab.vectors, num_filters=args.num_filters_experts)
@@ -94,6 +98,9 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", type=str, required=True)
+    parser.add_argument("--num_transformer_heads", type=int, default=2)
+    parser.add_argument("--num_transformer_layers", type=int, default=2)
+    parser.add_argument("--transformer_fwd_dim", type=int, default=64)
     parser.add_argument("--target_names", nargs="+", required=True)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--learning_rate", type=float, default=1)
@@ -123,6 +130,7 @@ if __name__ == "__main__":
     parser.add_argument("--balancing_strategy", type=str, default=None)
     parser.add_argument("--mean_diff", type=float, default=0.1)
     parser.add_argument("--balance_epoch_cnt", type=int, default=0)
+    parser.add_argument("--gating_nets_type", type=str, default="CNN")
     args = parser.parse_args()
 
     args.use_lengths = eval(args.use_lengths)

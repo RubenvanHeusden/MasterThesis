@@ -8,12 +8,12 @@ class SimpleLSTM(nn.Module):
     def __init__(self, vocab, hidden_dim: int, output_dim: int, dropout: float = 0.3,
                  device=torch.device("cpu"), use_lengths=True, use_bert_embeds: bool = False):
         """
-        @param vocab: a vector containing the word embeddings of the word in the train set
-        @param hidden_dim: int specifying number of hidden units in LSTM
-        @param output_dim: int specifying the number of output units
-        @param dropout: float specifying the dropout ratio
-        @param device: torch.device specifying if model is ran on cpu or gpu
-        @param use_lengths: boolean specifying whether to remove padding for LSTM input or not
+        :param vocab: a vector containing the word embeddings of the word in the train set
+        :param hidden_dim: int specifying number of hidden units in LSTM
+        :param output_dim: int specifying the number of output units
+        :param dropout: float specifying the dropout ratio
+        :param device: torch.device specifying if model is ran on cpu or gpu
+        :param use_lengths: boolean specifying whether to remove padding for LSTM input or not
         """
         super(SimpleLSTM, self).__init__()
         self.params = locals()

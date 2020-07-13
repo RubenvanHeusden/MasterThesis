@@ -1,0 +1,16 @@
+name: masterthesis_mmoe
+dependencies:
+- python>=3.7.0
+- conda-forge::spacy=2.2.3
+- pip
+- pip:
+  - torchtext==0.5.0
+  - tqdm==4.46.0
+  - tensorboard==2.1.1
+  - --find-links https://download.pytorch.org/whl/torch_stable.html
+  - torch==1.4.0
+  - https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-2.0.0/en_core_web_sm-2.0.0.tar.gz#egg=en_core_web_sm
+  - transformers==2.10.0
+- scikit-learn
+- pandas
+- numpy
