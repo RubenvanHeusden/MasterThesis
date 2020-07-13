@@ -29,23 +29,22 @@ class MultiGateMixtureofExperts(nn.Module):
                  include_lens: bool, batch_size: int, return_weights: bool = True, gating_drop=0.1,
                  mean_diff=0.1, weight_adjust_mode="reassign_mean_stateful"):
         """
+        :param shared_layers: a list of nn.Modules through which the input is fed
 
-        @param shared_layers: a list of nn.Modules through which the input is fed
-
-        @param gating_networks: a list of nn.Modules specifying the gating functions
+        :param gating_networks: a list of nn.Modules specifying the gating functions
         for each task, the length of this list should be equal to the number of tasks
 
-        @param towers: a list of nn.modules specifying the task specific layers
+        :param towers: a list of nn.modules specifying the task specific layers
         the length of this list should be equal to the number of tasks, the input
         dimensions of the modules must be equal to the output dimension of the shared layers
         and the output dimensions should match the number of possible classes for each task
 
-        @param device: torch.device() specifying on which device the model is run
+        :param device: torch.device() specifying on which device the model is run
 
-        @param include_lens: Boolean indicating whether to include the lengths of the
+        :param include_lens: Boolean indicating whether to include the lengths of the
         original sequences before padding (mostly for LSTM and RNN models)
 
-        @param batch_size: integer specifying the batch size
+        :param batch_size: integer specifying the batch size
         """
         super(MultiGateMixtureofExperts, self).__init__()
 

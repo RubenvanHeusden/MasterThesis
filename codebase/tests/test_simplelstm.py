@@ -33,7 +33,7 @@ class TestSimpleLSTMmodel(unittest.TestCase):
         sequence_length = 16
         sentence_lengths = torch.randint(low=1, high=sequence_length-1, size=[batch_size])
         x = torch.randint(low=0, high=sequence_length-1, size=(batch_size, sequence_length))
-        x = self.model((x, sentence_lengths))
+        x = self.model([x, sentence_lengths])
         self.assertEqual(x.shape, torch.Size([batch_size, self.output_dim]))
 
     def test_gpu_tensors(self):

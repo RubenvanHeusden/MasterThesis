@@ -60,31 +60,42 @@ arguments specified in the file to train and evaluate that specific model.
 
 For example, the below command trains an LSTM model on predicting the categories for the Enron dataset
 
-```
-python train_lstm_model.py --dataset ENRON-CAT --n_epochs 10 --fix_length 500 --tensorboard_dir runs/enron_categories_experiment1
-```
-### Selecting Datasets
+If you want to use your own dataset, you have to make sure that the first two columns are for the ID of the 
+datapoint and the text of the datapoint, like shown below: 
 
-For the Multitask Classification experiments all tasks within the dataset are 
-automatically all selected and trained simultaneously. 
+<table style="width:100%">
+  <tr>
+    <th>ID</th>
+    <th>text</th> 
+    <th>task_a_labels</th>
+    <th> task_b_labels</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>blabla</td>
+    <td>class_a</td>
+    <td>0</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>Hello World!</td>
+    <td>class_b</td>
+    <td>1</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>some more text</td>
+    <td>class_b</td>
+    <td>0</td>
+  </tr>
+</table>
+ 
+ when running the training commands, set ``--data_path`` to the folder that 
+ contains the  train.csv and test.csv. now for the ``--target_names`` set the names of the 
+ task labels. In this case this would be ``--target_names task_a_labels task_b_labels``
 
-Below are the (currently) available datasets and the different task for each dataset
-
-```
-ENRON
-	- ENRON-CAT
-	- ENRON-EMOT
-```
-
-
-```
-DAILYDIALOG
-	- DAILYDIALOG-ACT
-	- DAILYDIALOG-EMOT
-	- DAILYDIALOG-TOPIC
-```
-
-More details on the datasets can be found in the Thesis document.
+An example command for running the multigate Mixture-of-Experts model with CNN gating networks:
+```python train_multigate_mixture_of_experts_cnn.py  --data_path ../.data/enron/ --target_names category emotion --learning_rate 0.1 --n_epochs 50 --save_interval 500 --batch_size 64 --fix_length 100 --class_weighting True --linear_layers 256 --random_seed 3216 --num_filters_experts 100 --filter_list_experts 3 4 5 --num_filters_g 25 --filter_list_g 3 4 5 --n_experts 3 --balancing_strategy "dropout" --balance_epoch_cnt 100 --gate_dropout 0.30 --gating_nets_type CNN```
 
 ## Notes on using TensorBoard
 

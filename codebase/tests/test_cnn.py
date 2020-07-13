@@ -17,7 +17,7 @@ class TestCNN(unittest.TestCase):
         batch_size = 1
         x = torch.randint(low=0, high=98, size=(batch_size, self.sen_len))
         outputs = self.model(x)
-        self.assertEqual(outputs.shape, torch.Size([self.output_dim]))
+        self.assertEqual(outputs.squeeze().shape, torch.Size([self.output_dim]))
 
     def test_batch_inputs(self):
         batch_size = 4
@@ -31,4 +31,4 @@ class TestCNN(unittest.TestCase):
         x = torch.randint(low=0, high=98, size=(batch_size, self.sen_len))
         x = x.to(torch.device("cuda"))
         outputs = self.model(x)
-        self.assertEqual(outputs.detach().cpu().shape, torch.Size([self.output_dim]))
+        self.assertEqual(outputs.detach().cpu().squeeze().shape, torch.Size([self.output_dim]))

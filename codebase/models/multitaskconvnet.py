@@ -39,4 +39,3 @@ class MultitaskConvNet(nn.Module):
         output = self.dropout(pen_ultimate_layer).squeeze()
         return output
 
-

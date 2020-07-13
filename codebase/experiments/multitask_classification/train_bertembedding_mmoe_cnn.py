@@ -10,7 +10,7 @@ from codebase.models.convnet import ConvNet
 from codebase.models.multitaskconvnet import MultitaskConvNet
 from codebase.models.mlp import MLP
 from codebase.models.simplelstm import SimpleLSTM
-from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_class_weighting
+from codebase.data_classes.data_utils import multitask_class_weighting, get_num_classes_dataset
 from torch.utils.data import DataLoader
 from torch.utils.data._utils.collate import default_collate
 

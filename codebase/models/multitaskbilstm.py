@@ -8,12 +8,11 @@ class MultitaskBiLSTM(nn.Module):
     def __init__(self, vocab, hidden_dim: int,  dropout: float = 0.3,
                  device=torch.device("cpu"), use_lengths=True):
         """
-        @param vocab: a vector containing the word embeddings of the word in the train set
-        @param hidden_dim: int specifying number of hidden units in LSTM
-        @param output_dim: int specifying the number of output units
-        @param dropout: float specifying the dropout ratio
-        @param device: torch.device specifying if model is ran on cpu or gpu
-        @param use_lengths: boolean specifying whether to remove padding for LSTM input or not
+        :param vocab: a vector containing the word embeddings of the word in the train set
+        :param hidden_dim: int specifying number of hidden units in LSTM
+        :param dropout: float specifying the dropout ratio
+        :param device: torch.device specifying if model is ran on cpu or gpu
+        :param use_lengths: boolean specifying whether to remove padding for LSTM input or not
         """
         super(MultitaskBiLSTM, self).__init__()
         self.params = locals()
@@ -33,8 +32,8 @@ class MultitaskBiLSTM(nn.Module):
 
     def forward(self, x):
         """
-        @param x: tensor of size (batch_size, seq_length)
-        @return:
+        :param x: tensor of size (batch_size, seq_length)
+        :return:
         """
         if self.use_lengths:
             inputs, lengths = x

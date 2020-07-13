@@ -3,8 +3,9 @@ import argparse
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
+from torchtext.data import Field
 from torch.optim.lr_scheduler import StepLR
-from torchtext.data import Field, LabelField
+
 
 # Local imports
 from codebase.data_classes.data_utils import single_task_class_weighting, get_num_classes_dataset

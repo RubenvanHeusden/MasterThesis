@@ -1,26 +1,12 @@
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer, TfidfTransformer
-from sklearn.svm import SVC, LinearSVC
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.naive_bayes import ComplementNB, MultinomialNB
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV, SGDClassifier
-from sklearn.pipeline import Pipeline
-from collections import defaultdict
-from joblib import dump
-import re
-from sklearn.metrics import classification_report, accuracy_score, plot_confusion_matrix
 import pandas as pd
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from sklearn.neural_network import MLPClassifier
-
-# uses tf idf to vectorize documents and a given classifier
-# to classify the documents
+from sklearn.svm import LinearSVC
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import classification_report
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 class TfidfClassifier:
-    def __init__(self, classifier=None, path_to_datadir="data/", ngrams=None):
+    def __init__(self, classifier=None, path_to_datadir="data/"):
         self.classifier = classifier
         self.path_to_datadir = path_to_datadir
 

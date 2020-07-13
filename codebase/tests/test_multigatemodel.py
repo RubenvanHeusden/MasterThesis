@@ -56,8 +56,8 @@ class TestMultigateModel(unittest.TestCase):
         vocab = torch.rand(size=(128, embedding_dim))
         use_lengths = True
         self.model.gating_networks = nn.ModuleList([SimpleLSTM(vocab, hidden_dim, self.n_experts,
-                                                               device=torch.device(
-            "cpu"), use_lengths=use_lengths) for _ in range(self.n_tasks)])
+                                                               device=torch.device("cpu"), use_lengths=use_lengths)
+                                                    for _ in range(self.n_tasks)])
 
         self.model.shared_layers = nn.ModuleList([SimpleLSTM(vocab, hidden_dim, self.n_out_hidden,
                                                        device=torch.device("cpu"),
@@ -66,7 +66,7 @@ class TestMultigateModel(unittest.TestCase):
         sentence_lengths = torch.randint(low=1, high=self.n_in - 1, size=[batch_size])
         x = torch.randint(low=0, high=30, size=(batch_size, self.n_in))
 
-        outputs = self.model((x, sentence_lengths), tower=self.names)
+        outputs = self.model([x, sentence_lengths], tower=self.names)
 
         for i in range(len(self.task_outs)):
             self.assertEqual(outputs[i].shape, torch.Size([batch_size, self.task_outs[i]]))

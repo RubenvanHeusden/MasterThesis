@@ -7,26 +7,24 @@ class ConvNet(nn.Module):
     """
     This class implements a basic convolutional neural network for
     text classification as presented in (Kim,. 2014)
-
     """
     def __init__(self, input_channels: int, output_dim: int, filter_list: List[int],
                  embed_matrix, num_filters: int, dropbout_probs: float = 0.5, use_bert_embeds: bool = False):
         """
+        :param input_channels: integer specifying the number of input channels of the 'image'
 
-        @param input_channels: integer specifying the number of input channels of the 'image'
+        :param output_dim: integer specifying the number of outputs
 
-        @param output_dim: integer specifying the number of outputs
-
-        @param filter_list: list of integers specifying the size of each kernel that is applied to the image,
+        :param filter_list: list of integers specifying the size of each kernel that is applied to the image,
         the outputs of the kernels are concatenated to form the input to the linear layer
 
-        @param embed_matrix: torch Tensor with size [size_vocab, embedding_dim] where each row is a
+        :param embed_matrix: torch Tensor with size [size_vocab, embedding_dim] where each row is a
         word embedding
 
-        @param num_filters: the amount of filter to apply to the image, this also determins the size
+        :param num_filters: the amount of filter to apply to the image, this also determins the size
         of the input to the fully connected layers, which is equal to num_kernels*num_filters
 
-        @param dropbout_probs: float specifying the dropout probabilities
+        :param dropbout_probs: float specifying the dropout probabilities
         """
         super(ConvNet, self).__init__()
         self.params = locals()
@@ -47,8 +45,8 @@ class ConvNet(nn.Module):
     def forward(self, x):
         b = x.shape[0]
         """
-        @param x: input of size (batch_size, max_sen_length_batch)
-        @return: output of the CNN applied to the input x
+        :param x: input of size (batch_size, max_sen_length_batch)
+        :return: output of the CNN applied to the input x
         """
         if isinstance(x, list):
             x = x[0]

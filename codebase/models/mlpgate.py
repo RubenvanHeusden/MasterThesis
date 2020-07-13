@@ -11,12 +11,12 @@ class MLPGate(nn.Module):
         This class can be used as either a gating function are an expert network in
         the Mixture of Experts classes
 
-        @param input_dim: integer specifying the dimensionality of an input sample
+        :param input_dim: integer specifying the dimensionality of an input sample
 
-        @param layer_sizes:a list of integers specifying the size of each hidden layer, the number of hidden layers is
-                inferred from the length of the list.
+        :param output_dim: integer specifying the dimensionality of the output
 
-        @param output_dim: integer specifying the dimensionality of the output
+        :param embedding_matrix: pytorch matrix of size [vocab_size X word_embedding_dim] where each row
+        signifies a word embedding vector
         """
         super(MLPGate, self).__init__()
         self.hidden = nn.Linear(input_dim*embedding_matrix.shape[1], output_dim)
