@@ -98,7 +98,8 @@ def train(model, criterion_dict, optimizer, scheduler, dataset, n_epochs=5, devi
             if tensorboard_dir:
                 writer.add_scalar('loss_%s' % task, epoch_running_loss[task], epoch)
                 writer.add_scalar('accuracy_%s' % task, acc, epoch)
-                writer.add_scalar('dropout', model.gating_drop.p, epoch)
+                if hasattr(model, 'gating_drop'):
+                    writer.add_scalar('dropout', model.gating_drop.p, epoch)
                 if model.return_weights:
                     epoch_weights[task] = torch.cat(epoch_weights[task], dim=0)
 

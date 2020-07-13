@@ -7,10 +7,11 @@ from torch.optim.lr_scheduler import StepLR
 from torchtext.data import Field
 
 # Local imports
-from codebase.data_classes.data_utils import single_task_dataset_prep, single_task_class_weighting
+from codebase.data_classes.data_utils import single_task_class_weighting, get_num_classes_dataset
 from codebase.experiments.single_task_classification.train_methods import *
 from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.models.transformermodel import TransformerModel
+from codebase.data_classes.csvdataset import CSVDataset
 
 
 def main(args):
@@ -25,21 +26,19 @@ def main(args):
     TEXT = Field(lower=True, tokenize="spacy", tokenizer_language="en", include_lengths=False,
                  batch_first=True, fix_length=args.fix_length, init_token="[cls]")
 
-    dataset_class, num_classes, target = single_task_dataset_prep(args.dataset)
+    output_dimensions = get_num_classes_dataset(args.data_path, args.target_name)
 
     # Use name of dataset to get the arguments needed
-    print("--- Starting with reading in the %s dataset ---" % args.dataset)
-    dataset = dataset_class(text_field=TEXT, stratified_sampling=args.use_stratify).load(targets=target)
-    # dataset.load returns train and test datasets
-    print("--- Finished with reading in the %s dataset ---" % args.dataset)
-    # Load the dataset and split it into train and test portions
+    print("--- Starting with reading in the dataset ---")
+    dataset = CSVDataset(text_field=TEXT, path_to_datadir=args.data_path).load(targets=args.target_name)
+    print("--- Finished with reading in the dataset ---")
 
-    dloader = CustomDataLoader(dataset, TEXT, target)
+    dloader = CustomDataLoader(dataset, TEXT, args.target_name)
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
 
     model = TransformerModel(max_seq_len=args.fix_length,
-                             num_outputs=num_classes,
+                             num_outputs=output_dimensions,
                              word_embedding_matrix=TEXT.vocab.vectors,
                              feed_fwd_dim=args.fwd_dim,
                              num_transformer_layers=args.num_transformer_layers,
@@ -50,7 +49,7 @@ def main(args):
                              pad_index=TEXT.vocab.stoi['pad'])
 
     if args.class_weighting:
-        weights = single_task_class_weighting(data_iterators[0], num_classes)
+        weights = single_task_class_weighting(data_iterators[0])
         criterion = nn.CrossEntropyLoss(weight=weights.to(args.device))
     else:
         criterion = nn.CrossEntropyLoss()
@@ -59,26 +58,20 @@ def main(args):
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
     train(model, criterion, optimizer, scheduler, data_iterators[0], device=args.device,
-          include_lengths=False, save_path=args.logdir, save_name="%s_dataset" % args.dataset,
+          include_lengths=False, save_path=args.logdir, save_name="csv_dataset",
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
 
     print("Evaluating model")
-    model.load_state_dict(torch.load(args.logdir+"/%s_dataset_epoch_%d.pt" % (args.dataset, args.n_epochs-1)))
+    model.load_state_dict(torch.load(args.logdir+"/csv_dataset_epoch_%d.pt" % (args.n_epochs-1)))
     evaluation(model, data_iterators[-1], criterion, device=args.device, include_lengths=False)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # Dataset loading arguments
-    parser.add_argument("--dataset", help="""string specifying the dataset to be used
-                                        "options are:
-                                        -   DAILYDIALOG-ACT
-                                        -   DAILYDIALOG-EMOT
-                                        -   DAILYDIALOG-TOPIC
-                                        -   ENRON-EMOT
-                                        -   ENRON-CAT
-                                        """, type=str, default="ENRON-EMOT")
+    parser.add_argument("--data_path", type=str, required=True)
+    parser.add_argument("--target_name", nargs="+", required=True)
 
     parser.add_argument("--do_lowercase", type=str, default="True")
     parser.add_argument("--use_stratify", type=str, default="True")
@@ -112,4 +105,5 @@ if __name__ == "__main__":
     args.do_lowercase = eval(args.do_lowercase)
     args.use_stratify = eval(args.use_stratify)
     args.class_weighting = eval(args.class_weighting)
+    args.target_name = tuple(list(map(str, args.target_name)))
     main(args)

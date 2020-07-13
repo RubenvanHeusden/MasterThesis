@@ -8,15 +8,15 @@ from codebase.models.multitaskmodel import MultiTaskModel
 from codebase.models.multitaskconvnet import MultitaskConvNet
 from codebase.data_classes.customdataloader import CustomDataLoader
 from codebase.models.mlp import MLP
-from codebase.data_classes.data_utils import multi_task_dataset_prep, multitask_class_weighting
+from codebase.data_classes.data_utils import get_num_classes_dataset, multitask_class_weighting
 import argparse
+from codebase.data_classes.csvdataset import CSVDataset
 
 
 def main(args):
 
     # TODO: clip gradients
     # for the multitask learning, make a dictionary containing "task": data
-    dataset_class, output_dimensions, target_names = multi_task_dataset_prep(args.dataset)
     # Set the random seed for experiments (check if I need to do this for all the other files as well)
     torch.cuda.empty_cache()
     torch.manual_seed(args.random_seed)
@@ -28,18 +28,20 @@ def main(args):
                  fix_length=args.fix_length)
     # Load datasets
 
+    output_dimensions = get_num_classes_dataset(args.data_path, args.target_names)
+
     # Use name of dataset to get the arguments needed
-    print("--- Starting with reading in the %s dataset ---" % args.dataset)
-    dataset = dataset_class(text_field=TEXT).load(targets=target_names)
-    print("--- Finished with reading in the %s dataset ---" % args.dataset)
+    print("--- Starting with reading in the dataset ---")
+    dataset = CSVDataset(text_field=TEXT, path_to_datadir=args.data_path).load(targets=args.target_names)
+    print("--- Finished with reading in the dataset ---")
     # Load the dataset and split it into train and test portions
 
-    dloader = CustomDataLoader(dataset, TEXT, target_names)
+    dloader = CustomDataLoader(dataset, TEXT, args.target_names)
     data_iterators = dloader.construct_iterators(vectors="glove.6B.300d", vector_cache="../.vector_cache",
                                                  batch_size=args.batch_size, device=torch.device("cpu"))
 
     towers = {MLP(len(args.filter_list)*args.num_filters, args.linear_layers, output_dim): name for output_dim,
-                                                                        name in zip(output_dimensions, target_names)}
+                                                                        name in zip(output_dimensions, args.target_names)}
 
     model = MultitaskConvNet(1, args.filter_list, TEXT.vocab.vectors, args.num_filters, dropbout_probs=args.dropout)
 
@@ -48,32 +50,30 @@ def main(args):
                                      include_lens=args.use_lengths)
 
     if args.class_weighting:
-        task_weights = multitask_class_weighting(data_iterators[0], target_names, output_dimensions)
-        losses = {name: nn.CrossEntropyLoss(weight=task_weights[name].to(args.device)) for name in target_names}
+        task_weights = multitask_class_weighting(data_iterators[0], args.target_names)
+        losses = {name: nn.CrossEntropyLoss(weight=task_weights[name].to(args.device)) for name in args.target_names}
     else:
-        losses = {name: nn.CrossEntropyLoss() for name in target_names}
+        losses = {name: nn.CrossEntropyLoss() for name in args.target_names}
 
     optimizer = optim.SGD(multitask_model.parameters(), lr=args.learning_rate)
     scheduler = StepLR(optimizer, step_size=args.scheduler_stepsize, gamma=args.scheduler_gamma)
 
     train(multitask_model, losses, optimizer, scheduler, data_iterators[0], device=args.device,
-          include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_datasets" % "_".join(target_names),
+          include_lengths=args.use_lengths, save_path=args.logdir, save_name="%s_datasets" % "_".join(args.target_names),
           tensorboard_dir=args.logdir+"/runs", n_epochs=args.n_epochs, checkpoint_interval=args.save_interval,
           clip_val=args.gradient_clip)
 
     print("Evaluating model")
-    multitask_model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(target_names),
+    multitask_model.load_state_dict(torch.load("%s/%s_datasets_epoch_%d.pt" % (args.logdir, "_".join(args.target_names),
                                                                                               args.n_epochs-1)))
     evaluation(multitask_model, data_iterators[-1], losses, device=args.device)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="""string specifying the dataset to be used
-                                        "options are:
-                                        -   DAILYDIALOG
-                                        -   ENRON
-                                        """, type=str, default="ENRON")
+
+    parser.add_argument("--data_path", type=str, required=True)
+    parser.add_argument("--target_names", nargs="+", required=True)
 
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--learning_rate", type=float, default=1)
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--random_seed", type=int, default=42)
     parser.add_argument("--device", default=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     parser.add_argument("--n_epochs", type=int, default=25)
-    parser.add_argument("--logdir", type=str, default="saved_models/CNN")
+    parser.add_argument("--logdir", type=str, default="saved_models/Multitask_CNN")
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--gradient_clip", type=float, default=0.0)
 
@@ -103,4 +103,6 @@ if __name__ == "__main__":
     args.do_lowercase = eval(args.do_lowercase)
     args.filter_list = list(map(int, args.filter_list))
     args.linear_layers = list(map(int, args.linear_layers))
+    args.target_names = tuple(list(map(str, args.target_names)))
+
     main(args)

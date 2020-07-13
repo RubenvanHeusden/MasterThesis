@@ -1,91 +1,28 @@
 import torch
-import numpy as np
-from imblearn.over_sampling import RandomOverSampler
-from codebase.data_classes.enrondataset import EnronDataset
+import pandas as pd
+from torchtext.data import Example, Dataset
+from codebase.data_classes.csvdataset import CSVDataset
 from sklearn.utils.class_weight import compute_class_weight
-from codebase.data_classes.dailydialogdataset import DailyDialogDataset
 from codebase.data_classes.bertemeddingenrondataset import BertEmbeddingEnronDataset
 from codebase.data_classes.bertembeddingcustomdataset import BertEmbeddingCustomDataset
 from codebase.data_classes.bertembeddingdailydialogdataset import BertEmbeddingDailyDialogDataset
 
 
-def single_task_dataset_prep(dataset_string):
-    if dataset_string == "DAILYDIALOG-EMOT":
-        dataset = DailyDialogDataset
-        output_dim = 7
-        target = ("emotion", )
+def get_num_classes_dataset(path_to_dataset, target_names, delimiter: str = ",", quotechar='"'):
+    num_classes = []
 
-    elif dataset_string == "DAILYDIALOG-TOPIC":
-        dataset = DailyDialogDataset
-        output_dim = 10
-        target = ("topic", )
+    dataset_train = pd.read_csv(path_to_dataset+"train.csv", sep=delimiter, quotechar=quotechar)
+    dataset_test = pd.read_csv(path_to_dataset+"test.csv", sep=delimiter, quotechar=quotechar)
+    dataset = pd.concat((dataset_train, dataset_test), axis=0)
 
-    elif dataset_string == "DAILYDIALOG-ACT":
-        dataset = DailyDialogDataset
-        output_dim = 4
-        target = ("act", )
-
-    elif dataset_string == "ENRON-CAT":
-        dataset = EnronDataset
-        output_dim = 6
-        target = ("category", )
-
-    elif dataset_string == "ENRON-EMOT":
-        dataset = EnronDataset
-        output_dim = 10
-        target = ("emotion", )
-
-    else:
-        raise(Exception("Invalid dataset argument, please refer to the help function of the "
-                        "argument parser for details on valid arguments"))
-    return dataset, output_dim, target
+    for target in target_names:
+        num_classes.append(dataset[target].nunique())
+    if len(num_classes) == 1:
+        return num_classes[0]
+    return num_classes
 
 
-def multi_task_dataset_prep(dataset_string):
-    if dataset_string == "DAILYDIALOG":
-        dataset = DailyDialogDataset
-        output_dim = [7, 4, 10]
-        targets = ("emotion", "act", "topic")
-
-    elif dataset_string == "ENRON":
-        dataset = EnronDataset
-        output_dim = [6, 10]
-        targets = ("category", "emotion")
-
-    elif dataset_string == "DAILYDIALOG-BERT":
-        dataset = BertEmbeddingDailyDialogDataset(mode="train"), BertEmbeddingDailyDialogDataset(mode="test")
-        output_dim = [7, 4, 10]
-        targets = ("emotion", "act", "topic")
-
-    elif dataset_string == "ENRON-BERT":
-        dataset = BertEmbeddingEnronDataset(mode="train"), BertEmbeddingEnronDataset(mode="test")
-        output_dim = [6, 10]
-        targets = ("category", "emotion")
-
-    elif dataset_string == "CUSTOM-BERT":
-        dataset = BertEmbeddingCustomDataset(mode="train"), BertEmbeddingCustomDataset(mode="test")
-        output_dim = [18, 5, 8]
-        targets = ("label", "intent_classes", "emotion_classes")
-
-
-    else:
-        raise(Exception("Invalid dataset argument, please refer to the help function of the "
-                        "argument parser for details on valid arguments"))
-    return dataset, output_dim, targets
-
-
-def oversampler(train, test, target, text_label, field_label):
-    X = np.array(range(len(train))).reshape(-1, 1)
-    y = []
-    sampler = RandomOverSampler(random_state=0)
-    for example in train:
-        y.append(getattr(example, target))
-    resampled_X, resampled_Y = sampler.fit_resample(X, y)
-    for text, label in zip(resampled_X, resampled_Y):
-        print(text, label)
-
-
-def single_task_class_weighting(dataset, num_classes):
+def single_task_class_weighting(dataset):
     total_y = []
     for X, y, _ in dataset:
         total_y.append(y)
@@ -97,7 +34,7 @@ def single_task_class_weighting(dataset, num_classes):
     return torch.from_numpy(weights).float()
 
 
-def multitask_class_weighting(dataset, target_names, num_classes):
+def multitask_class_weighting(dataset, target_names):
 
     task_weights = {}
     task_totals = {task: [] for task in target_names}
@@ -112,3 +49,5 @@ def multitask_class_weighting(dataset, target_names, num_classes):
                                                   y=task_y.data.numpy())).float()
 
     return task_weights
+
+
